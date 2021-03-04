@@ -22,15 +22,10 @@ import org.ros.node.ConnectedNode;
 
 import java.util.concurrent.ExecutionException;
 
-public class CameraNode extends AbstractNodeMain implements LifecycleOwner {
-    private Context context;
-    private LifecycleRegistry lifecycleRegistry;
-    private ListenableFuture<ProcessCameraProvider> cameraProviderFuture;
-    private PreviewView previewView;
-    public CameraNode(Context context,ListenableFuture<ProcessCameraProvider> cameraProviderFuture,PreviewView previewView) {
-        this.context = context;
-        this.previewView = previewView;
-        this.cameraProviderFuture = cameraProviderFuture;
+public class CameraNode extends AbstractNodeMain {
+
+    public CameraNode() {
+
     }
 
     public GraphName getDefaultNodeName()
@@ -40,51 +35,18 @@ public class CameraNode extends AbstractNodeMain implements LifecycleOwner {
 
     @Override
     public void onStart(ConnectedNode connectedNode) {
-        lifecycleRegistry = new LifecycleRegistry(this);
-        lifecycleRegistry.setCurrentState(Lifecycle.State.CREATED);
+
         connectedNode.executeCancellableLoop(new CancellableLoop() {
             @Override
             protected void setup() {
-                setCameraProviderListener();
+
             }
 
             @Override
             protected void loop() throws InterruptedException {
-
             }
     });
     }
-    private void setCameraProviderListener() {
-        cameraProviderFuture = ProcessCameraProvider.getInstance(this.context);
-        cameraProviderFuture.addListener(() -> {
-            try {
-                ProcessCameraProvider cameraProvider = cameraProviderFuture.get();
-                bindPreview(cameraProvider);
-            } catch (ExecutionException | InterruptedException e) {
-                // No errors need to be handled for this Future.
-                // This should never be reached.
-            }
-        }, ContextCompat.getMainExecutor(this.context));
-    }
-
-    void bindPreview(@NonNull ProcessCameraProvider cameraProvider) {
-        Preview preview = new Preview.Builder()
-                .build();
-
-        CameraSelector cameraSelector = new CameraSelector.Builder()
-                .requireLensFacing(CameraSelector.LENS_FACING_BACK)
-                .build();
-
-        preview.setSurfaceProvider(previewView.getSurfaceProvider());
-
-        Camera camera = cameraProvider.bindToLifecycle((LifecycleOwner) this, cameraSelector, preview);
-        //System.out.println("Hola");
-        }
 
 
-    @NonNull
-    @Override
-    public Lifecycle getLifecycle() {
-        return lifecycleRegistry;
-    }
 }
