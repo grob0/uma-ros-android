@@ -7,14 +7,25 @@
     android:background="#FF000000"
     tools:context=".MainActivity">
 
-    <FrameLayout
+    <GridLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:id="@+id/container">
-        <androidx.camera.view.PreviewView
-            android:id="@+id/previewView"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:columnCount="2"
+        android:orientation="vertical"
+        tools:ignore="MissingConstraints">
+        <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent"/>
-    </FrameLayout>
+            android:layout_height="500dp"
+            android:id="@+id/container"
+            android:layout_columnSpan="1">
+            <androidx.camera.view.PreviewView
+                android:id="@+id/previewView"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"/>
+        </FrameLayout>
+
+    </GridLayout>
+
 
 </androidx.constraintlayout.widget.ConstraintLayout>
