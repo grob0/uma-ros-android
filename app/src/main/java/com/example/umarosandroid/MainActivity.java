@@ -2,6 +2,7 @@ package com.example.umarosandroid;
 
 import android.Manifest;
 
+import android.content.Context;
 import android.content.pm.PackageManager;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
@@ -35,9 +36,9 @@ public class MainActivity extends RosActivity  implements LifecycleOwner {
 
     private static final String[] CAMERA_PERMISSION = new String[]{Manifest.permission.CAMERA};
     private static final int CAMERA_REQUEST_CODE = 10;
-    //private SensorManager sensorManager;
+    private SensorManager sensorManager;
     private ListenableFuture<ProcessCameraProvider> cameraProviderFuture;
-    private PreviewView previewView;
+    //private PreviewView previewView;
 
     private LifecycleRegistry lifecycleRegistry;
 
@@ -66,10 +67,9 @@ public class MainActivity extends RosActivity  implements LifecycleOwner {
         lifecycleRegistry.setCurrentState(Lifecycle.State.CREATED);
 
         setContentView(R.layout.activity_main);
-        //sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        //Sensor sensor = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
-        previewView = findViewById(R.id.previewView);
-
+        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+        //previewView = findViewById(R.id.previewView);
+        /*
         if (!hasCameraPermission()) {
             requestPermission();
         }
@@ -84,9 +84,9 @@ public class MainActivity extends RosActivity  implements LifecycleOwner {
                 // This should never be reached.
             }
         }, ContextCompat.getMainExecutor(this));
-
+*/
     }
-
+/*
     void bindPreview(@NonNull ProcessCameraProvider cameraProvider) {
         Preview preview = new Preview.Builder()
                 .build();
@@ -100,7 +100,7 @@ public class MainActivity extends RosActivity  implements LifecycleOwner {
         Camera camera = cameraProvider.bindToLifecycle(this, cameraSelector, preview);
     }
 
-
+*/
     @NonNull
     @Override
     public Lifecycle getLifecycle() {
@@ -109,16 +109,16 @@ public class MainActivity extends RosActivity  implements LifecycleOwner {
 
     /*
      * Checks if camera permission is granted
-     */
+
     private boolean hasCameraPermission() {
         return ContextCompat.checkSelfPermission(
                 this,
                 Manifest.permission.CAMERA
         ) == PackageManager.PERMISSION_GRANTED;
     }
-    /*
+
      * Requests camera permission
-     */
+
     private void requestPermission() {
         ActivityCompat.requestPermissions(
                 this,
@@ -126,12 +126,12 @@ public class MainActivity extends RosActivity  implements LifecycleOwner {
                 CAMERA_REQUEST_CODE
         );
     }
-
+    */
     @Override
     protected void init(NodeMainExecutor nodeMainExecutor) {
         // ROS Nodes
-        //ImuNode imuNode = new ImuNode(sensorManager);
-        CameraNode cameraNode = new CameraNode();
+        ImuNode imuNode = new ImuNode(sensorManager);
+        //CameraNode cameraNode = new CameraNode();
 
         //Network configuration with ROS master
         NodeConfiguration nodeConfiguration = NodeConfiguration.newPublic(
@@ -140,7 +140,7 @@ public class MainActivity extends RosActivity  implements LifecycleOwner {
         nodeConfiguration.setMasterUri(getMasterUri());
 
         // Run node
-        //nodeMainExecutor.execute(imuNode, nodeConfiguration);
-        nodeMainExecutor.execute(cameraNode, nodeConfiguration);
+        nodeMainExecutor.execute(imuNode, nodeConfiguration);
+        //nodeMainExecutor.execute(cameraNode, nodeConfiguration);
     }
 }
