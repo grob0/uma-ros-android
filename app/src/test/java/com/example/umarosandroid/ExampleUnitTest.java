@@ -1,4 +1,4 @@
-package com.example.cameraxros;
+package com.example.umarosandroid;
 
 import org.junit.Test;
 
