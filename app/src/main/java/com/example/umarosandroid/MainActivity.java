@@ -82,9 +82,6 @@ public class MainActivity extends AppCompatRosActivity  implements LifecycleOwne
         cameraProviderFuture = ProcessCameraProvider.getInstance(this);
     }
 
-
-
-
     @NonNull
     @Override
     public Lifecycle getLifecycle() {

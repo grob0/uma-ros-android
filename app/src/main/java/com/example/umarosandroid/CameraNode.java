@@ -125,9 +125,10 @@ public class CameraNode extends AbstractNodeMain {
                 int uSize = uBuffer.remaining();
 
                 byte[] nv21 = new byte[ySize + uSize + vSize];
+                // U a V channels are swapped
                 yBuffer.get(nv21,0,ySize);
-                vBuffer.get(nv21,ySize,vSize);
-                uBuffer.get(nv21,ySize+vSize,uSize);
+                uBuffer.get(nv21,ySize,uSize);
+                vBuffer.get(nv21,ySize+uSize,vSize);
 
                 YuvImage yuvImage = new YuvImage(nv21, ImageFormat.NV21, image.getWidth(), image.getHeight(), null);
                 ByteArrayOutputStream out = new ByteArrayOutputStream();
