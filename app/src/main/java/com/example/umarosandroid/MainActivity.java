@@ -51,9 +51,9 @@ public class MainActivity extends AppCompatRosActivity  implements LifecycleOwne
     }
 
     @Override
-    protected void onPause()
-    {
-        super.onPause();
+    protected void onDestroy() {
+        super.onDestroy();
+        lifecycleRegistry.setCurrentState(Lifecycle.State.DESTROYED);
     }
 
     @Override
@@ -61,6 +61,12 @@ public class MainActivity extends AppCompatRosActivity  implements LifecycleOwne
     {
         super.onResume();
         lifecycleRegistry.setCurrentState(Lifecycle.State.RESUMED);
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        lifecycleRegistry.setCurrentState(Lifecycle.State.STARTED);
     }
 
     @Override
@@ -107,9 +113,8 @@ public class MainActivity extends AppCompatRosActivity  implements LifecycleOwne
 
     @Override
     protected void init(NodeMainExecutor nodeMainExecutor) {
-        // ROS Nodes
         ImuNode imuNode = new ImuNode(sensorManager);
-        CameraNode cameraNode = new CameraNode(this,cameraProviderFuture,previewView);
+        CameraNode2 cameraNode = new CameraNode2(this,cameraProviderFuture,previewView);
 
         //Network configuration with ROS master
         NodeConfiguration nodeConfiguration = NodeConfiguration.newPublic(

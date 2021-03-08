@@ -44,14 +44,11 @@ public class ImuNode implements NodeMain
         return GraphName.of("android/imuNode");
     }
 
-    public void onError(Node node, Throwable throwable)
-    {
+    public void onError(Node node, Throwable throwable) {
     }
 
-    public void onStart(ConnectedNode node)
-    {
-        try
-        {
+    public void onStart(ConnectedNode node) {
+        try {
             this.publisher = node.newPublisher("android/imu", "sensor_msgs/Imu");
             // 	Determine if we have the various needed sensors
             boolean hasAccel = false;

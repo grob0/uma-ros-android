@@ -46,9 +46,9 @@ import sensor_msgs.CompressedImage;
  */
 
 public class CameraNode extends AbstractNodeMain {
-    private Context context;
-    private ListenableFuture<ProcessCameraProvider> cameraProviderFuture;
-    private PreviewView previewView;
+    private final Context context;
+    private final ListenableFuture<ProcessCameraProvider> cameraProviderFuture;
+    private final PreviewView previewView;
     private Publisher<CompressedImage> compressedImagePublisher;
 
     public CameraNode(Context context, ListenableFuture<ProcessCameraProvider> cameraProviderFuture, PreviewView previewView) {
@@ -91,7 +91,7 @@ public class CameraNode extends AbstractNodeMain {
                         .build();
                 ImageAnalysis imageAnalysis =
                         new ImageAnalysis.Builder()
-                                .setTargetResolution(new Size(640, 480))
+                                .setTargetResolution(new Size(1280, 720))
                                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                                 .build();
 
@@ -153,8 +153,6 @@ public class CameraNode extends AbstractNodeMain {
 
                 compressedImagePublisher.publish(compressedImage);
             }
-    });
+        });
     }
-
-
 }
