@@ -34,8 +34,10 @@ import org.ros.node.topic.Publisher;
 
 import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.concurrent.ExecutionException;
 
+import sensor_msgs.CameraInfo;
 import sensor_msgs.CompressedImage;
 import sensor_msgs.Image;
 
@@ -44,11 +46,18 @@ import sensor_msgs.Image;
  */
 
 public class CameraNode2 extends AbstractNodeMain {
-    private Context context;
-    private ListenableFuture<ProcessCameraProvider> cameraProviderFuture;
-    private PreviewView previewView;
+    private final Context context;
+    private final ListenableFuture<ProcessCameraProvider> cameraProviderFuture;
+    private final PreviewView previewView;
+
+    private final int HEIGHT = 640;
+    private final int WIDTH = 480;
+
+
     private Publisher<CompressedImage> compressedImagePublisher;
+    private Publisher<CameraInfo> cameraInfoPublisher;
     private Publisher<Image> rawImagePublisher;
+
     private CameraThread cameraThread;
 
     public CameraNode2(Context context, ListenableFuture<ProcessCameraProvider> cameraProviderFuture, PreviewView previewView) {
@@ -64,9 +73,11 @@ public class CameraNode2 extends AbstractNodeMain {
 
     @Override
     public void onStart(ConnectedNode connectedNode) {
-        this.compressedImagePublisher = connectedNode.newPublisher("/android/camera/compressed", CompressedImage._TYPE);
+        this.cameraInfoPublisher = connectedNode.newPublisher("/android/camera/camera_info", CameraInfo._TYPE);
         this.rawImagePublisher = connectedNode.newPublisher("/android/camera/image_raw", Image._TYPE);
-        this.cameraThread = new CameraThread(context,cameraProviderFuture,connectedNode);
+        this.compressedImagePublisher = connectedNode.newPublisher("/android/camera/compressed", CompressedImage._TYPE);
+
+        this.cameraThread = new CameraThread(context,cameraProviderFuture,connectedNode,WIDTH,HEIGHT);
         this.cameraThread.start();
     }
 
@@ -92,12 +103,16 @@ public class CameraNode2 extends AbstractNodeMain {
         private Context context;
         private ConnectedNode connectedNode;
         private ChannelBufferOutputStream stream = new ChannelBufferOutputStream(MessageBuffers.dynamicBuffer());
+        private int width;
+        private int height;
 
 
-        private CameraThread(Context context, ListenableFuture<ProcessCameraProvider> cameraProviderFuture, ConnectedNode connectedNode) {
+        private CameraThread(Context context, ListenableFuture<ProcessCameraProvider> cameraProviderFuture, ConnectedNode connectedNode, int width, int height) {
             this.context = context;
             this.cameraProviderFuture = cameraProviderFuture;
             this.connectedNode = connectedNode;
+            this.width = width;
+            this.height = height;
         }
 
         public void run() {
@@ -138,7 +153,7 @@ public class CameraNode2 extends AbstractNodeMain {
                     .build();
             ImageAnalysis imageAnalysis =
                     new ImageAnalysis.Builder()
-                            .setTargetResolution(new Size(640, 480))
+                            .setTargetResolution(new Size(width, height))
                             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                             .build();
 
@@ -153,16 +168,17 @@ public class CameraNode2 extends AbstractNodeMain {
                 // analyze is called everytime a frame is captured so this is our main loop
                 @Override
                 public void analyze(@NonNull ImageProxy imageProxy) {
-                    byte[] imageByteArray = imageProxyToByteArray(imageProxy);
-                    updateCompressedImage(imageByteArray);
-                    // updateImage(imageByteArray);
+                    YuvImage yuvImage = imageProxyToYuvImage(imageProxy);
+                    updateCameraInfo();
+                    updateImage(yuvImage);
+                    updateCompressedImage(yuvImage);
                     imageProxy.close();
                 }
             });
             Camera camera = cameraProvider.bindToLifecycle((LifecycleOwner) context, cameraSelector, imageAnalysis,preview);
         }
 
-        private byte[] imageProxyToByteArray(ImageProxy image)
+        private YuvImage imageProxyToYuvImage(ImageProxy image)
         {
             ByteBuffer yBuffer = image.getPlanes()[0].getBuffer();
             ByteBuffer vBuffer = image.getPlanes()[1].getBuffer();
@@ -180,24 +196,47 @@ public class CameraNode2 extends AbstractNodeMain {
             vBuffer.get(nv21,ySize+uSize,vSize);
 
             YuvImage yuvImage = new YuvImage(nv21, ImageFormat.NV21, image.getWidth(), image.getHeight(), null);
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            yuvImage.compressToJpeg(new Rect(0, 0, yuvImage.getWidth(), yuvImage.getHeight()), 10, out);
+            /*System.out.println(yuvImage.getWidth());
+            System.out.println(yuvImage.getHeight());
+            System.out.println(Arrays.toString(yuvImage.getStrides()));
+            System.out.println(yuvImage.getYuvFormat());
+            */
 
-            return out.toByteArray();
+            //ByteArrayOutputStream out = new ByteArrayOutputStream();
+            //yuvImage.compressToJpeg(new Rect(0, 0, yuvImage.getWidth(), yuvImage.getHeight()), 10, out);
+
+            return yuvImage;
         }
 
-        @SuppressLint("RestrictedApi")
-        public void updateCompressedImage(byte[] imageByteArray){
-            Preconditions.checkNotNull(imageByteArray);
+        public void updateCameraInfo() {
             Time currentTime = connectedNode.getCurrentTime();
             String frameId = "camera";
 
+            CameraInfo cameraInfo = cameraInfoPublisher.newMessage();
+            cameraInfo.getHeader().setStamp(currentTime);
+            cameraInfo.getHeader().setFrameId(frameId);
+
+            cameraInfo.setWidth(width);
+            cameraInfo.setHeight(height);
+
+            cameraInfoPublisher.publish(cameraInfo);
+        }
+
+        @SuppressLint("RestrictedApi")
+        public void updateCompressedImage(YuvImage yuvImage){
+            Preconditions.checkNotNull(yuvImage.getYuvData());
+
+            Time currentTime = connectedNode.getCurrentTime();
+            String frameId = "camera";
+
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            yuvImage.compressToJpeg(new Rect(0, 0, yuvImage.getWidth(), yuvImage.getHeight()), 10, out);
             CompressedImage compressedImage = compressedImagePublisher.newMessage();
             compressedImage.setFormat("jpeg");
             compressedImage.getHeader().setStamp(currentTime);
             compressedImage.getHeader().setFrameId(frameId);
 
-            stream.buffer().writeBytes(imageByteArray);
+            stream.buffer().writeBytes(out.toByteArray());
             compressedImage.setData(stream.buffer().copy());
             stream.buffer().clear();
 
@@ -206,22 +245,23 @@ public class CameraNode2 extends AbstractNodeMain {
 
         // WIP
         @SuppressLint("RestrictedApi")
-        public void updateImage(byte[] imageByteArray){
-            Preconditions.checkNotNull(imageByteArray);
+        public void updateImage(YuvImage yuvImage){
+            Preconditions.checkNotNull(yuvImage.getYuvData());
+
             Time currentTime = connectedNode.getCurrentTime();
             String frameId = "camera";
 
             Image rawImage = rawImagePublisher.newMessage();
             rawImage.getHeader().setStamp(currentTime);
             rawImage.getHeader().setFrameId(frameId);
-            rawImage.setEncoding("bgr8");
+            rawImage.setEncoding("rgb8");
 
-            rawImage.setWidth(640);
-            rawImage.setHeight(480);
-            rawImage.setStep(640*3);
-            rawImage.setIsBigendian((byte) 0);
+            rawImage.setWidth(yuvImage.getWidth());
+            rawImage.setHeight(yuvImage.getHeight());
+            rawImage.setStep(yuvImage.getStrides()[0]+yuvImage.getStrides()[1]);
+            //rawImage.setIsBigendian((byte) 0);
 
-            stream.buffer().writeBytes(imageByteArray);
+            stream.buffer().writeBytes(yuvImage.getYuvData());
             rawImage.setData(stream.buffer().copy());
             stream.buffer().clear();
 

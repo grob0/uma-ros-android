@@ -114,7 +114,7 @@ public class MainActivity extends AppCompatRosActivity  implements LifecycleOwne
     @Override
     protected void init(NodeMainExecutor nodeMainExecutor) {
         ImuNode imuNode = new ImuNode(sensorManager);
-        CameraNode2 cameraNode = new CameraNode2(this,cameraProviderFuture,previewView);
+        CameraNode cameraNode = new CameraNode(this,cameraProviderFuture,previewView);
 
         //Network configuration with ROS master
         NodeConfiguration nodeConfiguration = NodeConfiguration.newPublic(
