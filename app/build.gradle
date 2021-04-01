@@ -57,4 +57,7 @@ dependencies {
     implementation "androidx.camera:camera-view:1.0.0-alpha21"
 
     implementation 'com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava'
+
+    debugImplementation 'com.squareup.leakcanary:leakcanary-android:2.6'
+
 }

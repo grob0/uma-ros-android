@@ -7,6 +7,8 @@ import android.content.pm.PackageManager;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
 import android.os.Bundle;
+import android.util.Log;
+import android.view.WindowManager;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -25,6 +27,9 @@ import androidx.lifecycle.LifecycleRegistry;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
+import org.opencv.android.BaseLoaderCallback;
+import org.opencv.android.LoaderCallbackInterface;
+import org.opencv.android.OpenCVLoader;
 import org.ros.address.InetAddressFactory;
 import org.ros.android.AppCompatRosActivity;
 import org.ros.android.RosActivity;
@@ -34,6 +39,8 @@ import org.ros.node.NodeMainExecutor;
 import java.util.concurrent.ExecutionException;
 
 public class MainActivity extends AppCompatRosActivity  implements LifecycleOwner {
+    private static final String  TAG = "MainActivity";
+
     // Camera requests
     private static final String[] CAMERA_PERMISSION = new String[]{Manifest.permission.CAMERA};
     private static final int CAMERA_REQUEST_CODE = 10;
@@ -50,6 +57,22 @@ public class MainActivity extends AppCompatRosActivity  implements LifecycleOwne
         super("Example","Example");
     }
 
+    private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
+        @Override
+        public void onManagerConnected(int status) {
+            switch (status) {
+                case LoaderCallbackInterface.SUCCESS:
+                {
+                    Log.i(TAG, "OpenCV loaded successfully");
+                } break;
+                default:
+                {
+                    super.onManagerConnected(status);
+                } break;
+            }
+        }
+    };
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
@@ -61,6 +84,13 @@ public class MainActivity extends AppCompatRosActivity  implements LifecycleOwne
     {
         super.onResume();
         lifecycleRegistry.setCurrentState(Lifecycle.State.RESUMED);
+        if (!OpenCVLoader.initDebug()) {
+            Log.d(TAG, "Internal OpenCV library not found. Using OpenCV Manager for initialization");
+            OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_0_0, this, mLoaderCallback);
+        } else {
+            Log.d(TAG, "OpenCV library found inside package. Using it!");
+            mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
+        }
     }
 
     @Override
@@ -77,8 +107,9 @@ public class MainActivity extends AppCompatRosActivity  implements LifecycleOwne
         lifecycleRegistry.setCurrentState(Lifecycle.State.CREATED);
 
         setContentView(R.layout.activity_main);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        //Sensor sensor = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
         previewView = findViewById(R.id.previewView);
 
         if (!hasCameraPermission()) {

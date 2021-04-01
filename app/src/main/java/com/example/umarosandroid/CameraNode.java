@@ -7,7 +7,6 @@ import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
 import android.graphics.Rect;
 import android.graphics.YuvImage;
-import android.media.Image;
 import android.util.Size;
 
 import androidx.annotation.NonNull;
@@ -36,11 +35,17 @@ import org.ros.node.ConnectedNode;
 import org.ros.node.topic.Publisher;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.ExecutionException;
 
 import sensor_msgs.CameraInfo;
 import sensor_msgs.CompressedImage;
+import sensor_msgs.Image;
+
+import org.opencv.core.Mat;
+import static org.opencv.imgproc.Imgproc.COLOR_YUV2RGB_NV21;
+import static org.opencv.imgproc.Imgproc.cvtColor;
 
 /**
  * @author germanruizmudarra@gmail.com (Germán Ruiz-Mudarra)
@@ -49,12 +54,16 @@ import sensor_msgs.CompressedImage;
 public class CameraNode extends AbstractNodeMain {
     private final Context context;
     private final ListenableFuture<ProcessCameraProvider> cameraProviderFuture;
-    private final PreviewView previewView;
-    private Publisher<CompressedImage> compressedImagePublisher;
-    private Publisher<CameraInfo> cameraInfoPublisher;
 
-    private final int HEIGHT = 640;
-    private final int WIDTH = 480;
+    private final int HEIGHT = 1080;
+    private final int WIDTH = 1920;
+    private final PreviewView previewView;
+
+    private Time currentTime;
+    private final String frameId = "camera";
+    private Publisher<CameraInfo> cameraInfoPublisher;
+    private Publisher<Image> rawImagePublisher;
+    private Publisher<CompressedImage> compressedImagePublisher;
 
     public CameraNode(Context context, ListenableFuture<ProcessCameraProvider> cameraProviderFuture, PreviewView previewView) {
         this.context = context;
@@ -69,11 +78,18 @@ public class CameraNode extends AbstractNodeMain {
 
     @Override
     public void onStart(ConnectedNode connectedNode) {
-        compressedImagePublisher = connectedNode.newPublisher("/android/camera/compressed", CompressedImage._TYPE);
         cameraInfoPublisher = connectedNode.newPublisher("/android/camera/camera_info", CameraInfo._TYPE);
+        rawImagePublisher = connectedNode.newPublisher("/android/camera/image_raw", Image._TYPE);
+        compressedImagePublisher = connectedNode.newPublisher("/android/camera/compressed", CompressedImage._TYPE);
+        CameraInfo cameraInfo = cameraInfoPublisher.newMessage();
+        Image rawImage = rawImagePublisher.newMessage();
+        CompressedImage compressedImage = compressedImagePublisher.newMessage();
+
 
         connectedNode.executeCancellableLoop(new CancellableLoop() {
-            private ChannelBufferOutputStream stream = new ChannelBufferOutputStream(MessageBuffers.dynamicBuffer());
+            private final ChannelBufferOutputStream stream = new ChannelBufferOutputStream(MessageBuffers.dynamicBuffer());
+            private final Mat yuvMat = new Mat();
+            private final Mat rgbMat = new Mat();
             @Override
             protected void setup() {
                 cameraProviderFuture.addListener(() -> {
@@ -113,8 +129,7 @@ public class CameraNode extends AbstractNodeMain {
                     @Override
                     public void analyze(@NonNull ImageProxy imageProxy) {
                         YuvImage yuvImage = imageProxyToYuvImage(imageProxy);
-                        updateCameraInfo();
-                        //updateImage(yuvImage);
+                        updateCameraInfo(yuvImage);
                         updateCompressedImage(yuvImage);
                         imageProxy.close();
                     }
@@ -127,7 +142,6 @@ public class CameraNode extends AbstractNodeMain {
                 ByteBuffer vBuffer = image.getPlanes()[1].getBuffer();
                 ByteBuffer uBuffer = image.getPlanes()[2].getBuffer();
 
-
                 int ySize = yBuffer.remaining();
                 int vSize = vBuffer.remaining();
                 int uSize = uBuffer.remaining();
@@ -137,54 +151,69 @@ public class CameraNode extends AbstractNodeMain {
                 yBuffer.get(nv21,0,ySize);
                 uBuffer.get(nv21,ySize,uSize);
                 vBuffer.get(nv21,ySize+uSize,vSize);
-                /*System.out.println(yuvImage.getWidth());
-                System.out.println(yuvImage.getHeight());
-                System.out.println(Arrays.toString(yuvImage.getStrides()));
-                System.out.println(yuvImage.getYuvFormat());
-                */
-
-                //ByteArrayOutputStream out = new ByteArrayOutputStream();
-                //yuvImage.compressToJpeg(new Rect(0, 0, yuvImage.getWidth(), yuvImage.getHeight()), 10, out);
 
                 return new YuvImage(nv21, ImageFormat.NV21, image.getWidth(), image.getHeight(), null);
             }
+
+            public void updateCameraInfo(YuvImage yuvImage) {
+                currentTime = connectedNode.getCurrentTime();
+                cameraInfo.getHeader().setStamp(currentTime);
+                cameraInfo.getHeader().setFrameId(frameId);
+
+                cameraInfo.setWidth(yuvImage.getWidth());
+                cameraInfo.setHeight(yuvImage.getHeight());
+
+                cameraInfoPublisher.publish(cameraInfo);
+            }
+
             @SuppressLint("RestrictedApi")
-            public void updateCompressedImage(YuvImage yuvImage){
+            public void updateCompressedImage(YuvImage yuvImage) {
                 Preconditions.checkNotNull(yuvImage.getYuvData());
 
-                Time currentTime = connectedNode.getCurrentTime();
-                String frameId = "camera";
-
                 ByteArrayOutputStream out = new ByteArrayOutputStream();
-                yuvImage.compressToJpeg(new Rect(0, 0, yuvImage.getWidth(), yuvImage.getHeight()), 10, out);
-                CompressedImage compressedImage = compressedImagePublisher.newMessage();
+                yuvImage.compressToJpeg(new Rect(0, 0, yuvImage.getWidth(), yuvImage.getHeight()), 25, out);
                 compressedImage.setFormat("jpeg");
-                compressedImage.getHeader().setStamp(currentTime);
-                compressedImage.getHeader().setFrameId(frameId);
 
                 stream.buffer().writeBytes(out.toByteArray());
                 compressedImage.setData(stream.buffer().copy());
                 stream.buffer().clear();
 
+                currentTime = connectedNode.getCurrentTime();
+                compressedImage.getHeader().setStamp(currentTime);
+                compressedImage.getHeader().setFrameId(frameId);
+
                 compressedImagePublisher.publish(compressedImage);
             }
 
-            public void updateCameraInfo() {
-                Time currentTime = connectedNode.getCurrentTime();
-                String frameId = "camera";
 
-                CameraInfo cameraInfo = cameraInfoPublisher.newMessage();
-                cameraInfo.getHeader().setStamp(currentTime);
-                cameraInfo.getHeader().setFrameId(frameId);
+            @SuppressLint("RestrictedApi")
+            public void updateRawImage(YuvImage yuvImage){
+                Preconditions.checkNotNull(yuvImage.getYuvData());
 
-                cameraInfo.setWidth(WIDTH);
-                cameraInfo.setHeight(HEIGHT);
+                yuvMat.put(0,0,yuvImage.getYuvData());
+                cvtColor(yuvMat,rgbMat,COLOR_YUV2RGB_NV21);
 
-                cameraInfoPublisher.publish(cameraInfo);
+                rawImage.setEncoding("rgb8");
+                rawImage.setWidth(WIDTH);
+                rawImage.setHeight(HEIGHT);
+                rawImage.setStep(WIDTH*3);
+
+                byte[] rgbData = new byte[rgbMat.height()*rgbMat.width()*3];
+                rgbMat.get(0,0,rgbData);
+                rgbMat.release();
+                stream.buffer().writeBytes(rgbData);
+                rawImage.setData(stream.buffer().copy());
+
+                currentTime = connectedNode.getCurrentTime();
+                rawImage.getHeader().setStamp(currentTime);
+                rawImage.getHeader().setFrameId(frameId);
+
+                rawImagePublisher.publish(rawImage);
+
+                stream.buffer().clear();
+
+                yuvMat.release();
             }
-
-
-
         });
     }
 }

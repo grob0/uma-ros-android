@@ -170,7 +170,7 @@ public class CameraNode2 extends AbstractNodeMain {
                 public void analyze(@NonNull ImageProxy imageProxy) {
                     YuvImage yuvImage = imageProxyToYuvImage(imageProxy);
                     updateCameraInfo();
-                    updateImage(yuvImage);
+                    //updateImage(yuvImage);
                     updateCompressedImage(yuvImage);
                     imageProxy.close();
                 }
