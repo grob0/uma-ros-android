@@ -2,5 +2,11 @@
     <string name="app_name">UMA ROS-Android</string>
     <string name="preview_area">Preview Area</string>
     <string name="capture">Capture</string>
+    <string name="IMU">IMU</string>
+    <string name="Camera">Camera</string>
+    <string name="select_text">Select the sensors you want to send via ROS</string>
+    <string name="info_text">Esta aplicación ha sido desarrollada para el TFM titulado "Integración de sensores 5G con ROS para misiones de respuesta
+a emergencias".</string>
+
 
 </resources>
