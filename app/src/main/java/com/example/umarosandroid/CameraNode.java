@@ -1,14 +1,12 @@
 package com.example.umarosandroid;
 
-import android.annotation.SuppressLint;
 import android.content.Context;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
 import android.graphics.Rect;
 import android.graphics.YuvImage;
 import android.util.Size;
 
+import android.annotation.SuppressLint;
 import androidx.annotation.NonNull;
 import androidx.camera.core.Camera;
 import androidx.camera.core.CameraSelector;
@@ -19,13 +17,13 @@ import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
 import androidx.core.content.ContextCompat;
 import androidx.core.util.Preconditions;
-import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.LifecycleOwner;
-import androidx.lifecycle.LifecycleRegistry;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
+import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBufferOutputStream;
+import org.jboss.netty.buffer.ChannelBuffers;
 import org.ros.concurrent.CancellableLoop;
 import org.ros.internal.message.MessageBuffers;
 import org.ros.message.Time;
@@ -35,17 +33,14 @@ import org.ros.node.ConnectedNode;
 import org.ros.node.topic.Publisher;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.concurrent.ExecutionException;
 
 import sensor_msgs.CameraInfo;
 import sensor_msgs.CompressedImage;
 import sensor_msgs.Image;
-
-import org.opencv.core.Mat;
-import static org.opencv.imgproc.Imgproc.COLOR_YUV2RGB_NV21;
-import static org.opencv.imgproc.Imgproc.cvtColor;
+import std_msgs.UInt8MultiArray;
 
 /**
  * @author germanruizmudarra@gmail.com (Germán Ruiz-Mudarra)
@@ -63,6 +58,7 @@ public class CameraNode extends AbstractNodeMain {
     private final String frameId = "camera";
     private Publisher<CameraInfo> cameraInfoPublisher;
     private Publisher<Image> rawImagePublisher;
+    private Publisher<UInt8MultiArray> nv21Publisher;
     private Publisher<CompressedImage> compressedImagePublisher;
 
     public CameraNode(Context context, ListenableFuture<ProcessCameraProvider> cameraProviderFuture, PreviewView previewView) {
@@ -80,16 +76,18 @@ public class CameraNode extends AbstractNodeMain {
     public void onStart(ConnectedNode connectedNode) {
         cameraInfoPublisher = connectedNode.newPublisher("/android/camera/camera_info", CameraInfo._TYPE);
         rawImagePublisher = connectedNode.newPublisher("/android/camera/image_raw", Image._TYPE);
+        nv21Publisher = connectedNode.newPublisher("/android/nv21",UInt8MultiArray._TYPE);
         compressedImagePublisher = connectedNode.newPublisher("/android/camera/compressed", CompressedImage._TYPE);
         CameraInfo cameraInfo = cameraInfoPublisher.newMessage();
         Image rawImage = rawImagePublisher.newMessage();
+        UInt8MultiArray nv21Msg = nv21Publisher.newMessage();
         CompressedImage compressedImage = compressedImagePublisher.newMessage();
 
 
         connectedNode.executeCancellableLoop(new CancellableLoop() {
             private final ChannelBufferOutputStream stream = new ChannelBufferOutputStream(MessageBuffers.dynamicBuffer());
-            private final Mat yuvMat = new Mat();
-            private final Mat rgbMat = new Mat();
+            private int width;
+            private int height;
             @Override
             protected void setup() {
                 cameraProviderFuture.addListener(() -> {
@@ -104,8 +102,7 @@ public class CameraNode extends AbstractNodeMain {
             }
 
             @Override
-            protected void loop() throws InterruptedException {
-
+            protected void loop() {
             }
 
             void bindPreviewAndAnalysis(@NonNull ProcessCameraProvider cameraProvider) {
@@ -117,7 +114,6 @@ public class CameraNode extends AbstractNodeMain {
                                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                                 .build();
 
-
                 CameraSelector cameraSelector = new CameraSelector.Builder()
                         .requireLensFacing(CameraSelector.LENS_FACING_BACK)
                         .build();
@@ -128,16 +124,20 @@ public class CameraNode extends AbstractNodeMain {
                     // analyze is called everytime a frame is captured so this is our main loop
                     @Override
                     public void analyze(@NonNull ImageProxy imageProxy) {
-                        YuvImage yuvImage = imageProxyToYuvImage(imageProxy);
-                        updateCameraInfo(yuvImage);
-                        updateCompressedImage(yuvImage);
+                        byte[] nv21 = imageProxyToYuvImage(imageProxy);
+                        width = imageProxy.getWidth();
+                        height = imageProxy.getHeight();
+
+                        updateCameraInfo();
+                        updateCompressedImage(nv21);
+                        //updateRawImage(nv21);
                         imageProxy.close();
                     }
                 });
                 Camera camera = cameraProvider.bindToLifecycle((LifecycleOwner) context, cameraSelector, imageAnalysis,preview);
             }
-            private YuvImage imageProxyToYuvImage(ImageProxy image)
-            {
+
+            private byte[] imageProxyToYuvImage(ImageProxy image) {
                 ByteBuffer yBuffer = image.getPlanes()[0].getBuffer();
                 ByteBuffer vBuffer = image.getPlanes()[1].getBuffer();
                 ByteBuffer uBuffer = image.getPlanes()[2].getBuffer();
@@ -152,26 +152,27 @@ public class CameraNode extends AbstractNodeMain {
                 uBuffer.get(nv21,ySize,uSize);
                 vBuffer.get(nv21,ySize+uSize,vSize);
 
-                return new YuvImage(nv21, ImageFormat.NV21, image.getWidth(), image.getHeight(), null);
+                return nv21;
             }
 
-            public void updateCameraInfo(YuvImage yuvImage) {
+            public void updateCameraInfo() {
                 currentTime = connectedNode.getCurrentTime();
                 cameraInfo.getHeader().setStamp(currentTime);
                 cameraInfo.getHeader().setFrameId(frameId);
 
-                cameraInfo.setWidth(yuvImage.getWidth());
-                cameraInfo.setHeight(yuvImage.getHeight());
+                cameraInfo.setWidth(width);
+                cameraInfo.setHeight(height);
 
                 cameraInfoPublisher.publish(cameraInfo);
             }
 
             @SuppressLint("RestrictedApi")
-            public void updateCompressedImage(YuvImage yuvImage) {
-                Preconditions.checkNotNull(yuvImage.getYuvData());
+            public void updateCompressedImage(byte[] nv21) {
+                Preconditions.checkNotNull(nv21);
 
+                YuvImage yuvImage = new YuvImage(nv21, ImageFormat.NV21, width, height, null);
                 ByteArrayOutputStream out = new ByteArrayOutputStream();
-                yuvImage.compressToJpeg(new Rect(0, 0, yuvImage.getWidth(), yuvImage.getHeight()), 25, out);
+                yuvImage.compressToJpeg(new Rect(0, 0, width, height), 25, out);
                 compressedImage.setFormat("jpeg");
 
                 stream.buffer().writeBytes(out.toByteArray());
@@ -184,24 +185,17 @@ public class CameraNode extends AbstractNodeMain {
 
                 compressedImagePublisher.publish(compressedImage);
             }
-
-
+            /*
             @SuppressLint("RestrictedApi")
-            public void updateRawImage(YuvImage yuvImage){
-                Preconditions.checkNotNull(yuvImage.getYuvData());
+            public void updateRawImage(byte[] nv21) {
+                Preconditions.checkNotNull(nv21);
 
-                yuvMat.put(0,0,yuvImage.getYuvData());
-                cvtColor(yuvMat,rgbMat,COLOR_YUV2RGB_NV21);
+                //rawImage.setEncoding("rgb8");
+                rawImage.setWidth(yuvImage.getWidth());
+                rawImage.setHeight(yuvImage.getHeight());
+                //rawImage.setStep(WIDTH*3);
 
-                rawImage.setEncoding("rgb8");
-                rawImage.setWidth(WIDTH);
-                rawImage.setHeight(HEIGHT);
-                rawImage.setStep(WIDTH*3);
-
-                byte[] rgbData = new byte[rgbMat.height()*rgbMat.width()*3];
-                rgbMat.get(0,0,rgbData);
-                rgbMat.release();
-                stream.buffer().writeBytes(rgbData);
+                stream.buffer().writeBytes(yuvImage.getYuvData());
                 rawImage.setData(stream.buffer().copy());
 
                 currentTime = connectedNode.getCurrentTime();
@@ -211,9 +205,8 @@ public class CameraNode extends AbstractNodeMain {
                 rawImagePublisher.publish(rawImage);
 
                 stream.buffer().clear();
-
-                yuvMat.release();
             }
+            */
         });
     }
 }

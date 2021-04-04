@@ -34,7 +34,6 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.2.0'
     implementation 'com.google.android.material:material:1.3.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.0.4'
-    implementation project(path: ':openCVLibrary343')
     testImplementation 'junit:junit:4.+'
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
@@ -57,6 +56,9 @@ dependencies {
     implementation "androidx.camera:camera-view:1.0.0-alpha21"
 
     implementation 'com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava'
+
+    // OpenCV
+    implementation 'com.quickbirdstudios:opencv:4.3.0'
 
     debugImplementation 'com.squareup.leakcanary:leakcanary-android:2.6'
 
