@@ -57,8 +57,6 @@ public class CameraNode extends AbstractNodeMain {
     private Time currentTime;
     private final String frameId = "camera";
     private Publisher<CameraInfo> cameraInfoPublisher;
-    private Publisher<Image> rawImagePublisher;
-    private Publisher<UInt8MultiArray> nv21Publisher;
     private Publisher<CompressedImage> compressedImagePublisher;
 
     public CameraNode(Context context, ListenableFuture<ProcessCameraProvider> cameraProviderFuture, PreviewView previewView) {
@@ -66,7 +64,7 @@ public class CameraNode extends AbstractNodeMain {
         this.cameraProviderFuture = cameraProviderFuture;
         this.previewView = previewView;
     }
-
+    @Override
     public GraphName getDefaultNodeName()
     {
         return GraphName.of("android/CameraNode");
@@ -75,12 +73,8 @@ public class CameraNode extends AbstractNodeMain {
     @Override
     public void onStart(ConnectedNode connectedNode) {
         cameraInfoPublisher = connectedNode.newPublisher("/android/camera/camera_info", CameraInfo._TYPE);
-        rawImagePublisher = connectedNode.newPublisher("/android/camera/image_raw", Image._TYPE);
-        nv21Publisher = connectedNode.newPublisher("/android/nv21",UInt8MultiArray._TYPE);
         compressedImagePublisher = connectedNode.newPublisher("/android/camera/compressed", CompressedImage._TYPE);
         CameraInfo cameraInfo = cameraInfoPublisher.newMessage();
-        Image rawImage = rawImagePublisher.newMessage();
-        UInt8MultiArray nv21Msg = nv21Publisher.newMessage();
         CompressedImage compressedImage = compressedImagePublisher.newMessage();
 
 
@@ -185,28 +179,6 @@ public class CameraNode extends AbstractNodeMain {
 
                 compressedImagePublisher.publish(compressedImage);
             }
-            /*
-            @SuppressLint("RestrictedApi")
-            public void updateRawImage(byte[] nv21) {
-                Preconditions.checkNotNull(nv21);
-
-                //rawImage.setEncoding("rgb8");
-                rawImage.setWidth(yuvImage.getWidth());
-                rawImage.setHeight(yuvImage.getHeight());
-                //rawImage.setStep(WIDTH*3);
-
-                stream.buffer().writeBytes(yuvImage.getYuvData());
-                rawImage.setData(stream.buffer().copy());
-
-                currentTime = connectedNode.getCurrentTime();
-                rawImage.getHeader().setStamp(currentTime);
-                rawImage.getHeader().setFrameId(frameId);
-
-                rawImagePublisher.publish(rawImage);
-
-                stream.buffer().clear();
-            }
-            */
         });
     }
 }

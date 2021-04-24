@@ -24,11 +24,10 @@ import androidx.camera.view.PreviewView;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
 import com.google.common.util.concurrent.ListenableFuture;
 
-import org.opencv.android.BaseLoaderCallback;
-import org.opencv.android.LoaderCallbackInterface;
-import org.opencv.android.OpenCVLoader;
 import org.ros.address.InetAddressFactory;
 import org.ros.android.MasterChooser;
 import org.ros.android.NodeMainExecutorService;
@@ -43,8 +42,6 @@ import java.net.URISyntaxException;
 
 
 public class MainActivity extends AppCompatActivity {
-    private static final String  TAG = "MainActivity";
-
     private static final int MASTER_CHOOSER_REQUEST_CODE = 0;
 
     private ServiceConnection nodeMainExecutorServiceConnection;
@@ -54,26 +51,20 @@ public class MainActivity extends AppCompatActivity {
     private static final String[] CAMERA_PERMISSION = new String[]{Manifest.permission.CAMERA};
     private static final int CAMERA_REQUEST_CODE = 10;
 
+    // Coarse location requests
+    private static final String[] COARSE_LOCATION_PERMISSION = new String[]{Manifest.permission.ACCESS_COARSE_LOCATION};
+    private static final int COARSE_LOCATION_REQUEST_CODE = 10;
+
+    // Coarse location requests
+    private static final String[] FINE_LOCATION_PERMISSION = new String[]{Manifest.permission.ACCESS_FINE_LOCATION};
+    private static final int FINE_LOCATION_REQUEST_CODE = 10;
+
     // IMU and Camera instances and views
     private SensorManager sensorManager;
     private ListenableFuture<ProcessCameraProvider> cameraProviderFuture;
     private PreviewView previewView;
 
-    private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
-        @Override
-        public void onManagerConnected(int status) {
-            switch (status) {
-                case LoaderCallbackInterface.SUCCESS:
-                {
-                    Log.i(TAG, "OpenCV loaded successfully");
-                } break;
-                default:
-                {
-                    super.onManagerConnected(status);
-                } break;
-            }
-        }
-    };
+    private FusedLocationProviderClient fusedLocationClient;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -82,22 +73,23 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
-        if (!OpenCVLoader.initDebug()) {
-            Log.d(TAG, "Internal OpenCV library not found. Using OpenCV Manager for initialization");
-            OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_0_0, this, mLoaderCallback);
-        } else {
-            Log.d(TAG, "OpenCV library found inside package. Using it!");
-            mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
-        }
-
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         previewView = findViewById(R.id.previewView);
 
         if (!hasCameraPermission()) {
-            requestPermission();
+            requestCameraPermission();
         }
+        if (!hasCoarseLocationPermission()) {
+            requestCoarseLocationPermission();
+        }
+        if (!hasFineLocationPermission()) {
+            requestFineLocationPermission();
+        }
+
         nodeMainExecutorServiceConnection = new NodeMainExecutorServiceConnection(null);
         cameraProviderFuture = ProcessCameraProvider.getInstance(this);
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+
     }
 
     @Override
@@ -173,7 +165,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // Requests camera permission
-    private void requestPermission() {
+    private void requestCameraPermission() {
         ActivityCompat.requestPermissions(
                 this,
                 CAMERA_PERMISSION,
@@ -181,10 +173,40 @@ public class MainActivity extends AppCompatActivity {
         );
     }
 
+    private boolean hasCoarseLocationPermission() {
+        return ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+        )== PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void requestCoarseLocationPermission() {
+        ActivityCompat.requestPermissions(
+                this,
+                COARSE_LOCATION_PERMISSION,
+                COARSE_LOCATION_REQUEST_CODE
+        );
+    }
+
+    private boolean hasFineLocationPermission() {
+        return ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+        )== PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void requestFineLocationPermission() {
+        ActivityCompat.requestPermissions(
+                this,
+                FINE_LOCATION_PERMISSION,
+                FINE_LOCATION_REQUEST_CODE
+        );
+    }
+
     protected void init(NodeMainExecutor nodeMainExecutor) {
         ImuNode imuNode = new ImuNode(sensorManager);
         CameraNode cameraNode = new CameraNode(this,cameraProviderFuture,previewView);
-
+        GPSNode gpsNode = new GPSNode(this,fusedLocationClient);
         //Network configuration with ROS master
         final NodeConfiguration nodeConfiguration = NodeConfiguration.newPublic(
                 InetAddressFactory.newNonLoopback().getHostAddress()
@@ -192,8 +214,9 @@ public class MainActivity extends AppCompatActivity {
         nodeConfiguration.setMasterUri(nodeMainExecutorService.getMasterUri());
 
         // Run nodes
-        nodeMainExecutor.execute(imuNode, nodeConfiguration);
-        nodeMainExecutor.execute(cameraNode, nodeConfiguration);
+        //nodeMainExecutor.execute(imuNode, nodeConfiguration);
+        //nodeMainExecutor.execute(cameraNode, nodeConfiguration);
+        nodeMainExecutor.execute(gpsNode,nodeConfiguration);
     }
     
     @SuppressWarnings("NonStaticInnerClassInSecureContext")
