@@ -33,15 +33,17 @@ public class ImuNode implements NodeMain
     private SensorListener sensorListener;
     private SensorManager sensorManager;
     private Publisher<Imu> publisher;
+    private String nodeName;
 
-    public ImuNode(SensorManager manager) // Contructor
+    public ImuNode(SensorManager manager, String nodeName) // Contructor
     {
         this.sensorManager = manager; // Sensor manager instantiated in the main activity
+        this.nodeName = nodeName;
     }
 
     public GraphName getDefaultNodeName()
     {
-        return GraphName.of("android/imuNode");
+        return GraphName.of(nodeName+"/imuNode");
     }
 
     public void onError(Node node, Throwable throwable) {
@@ -49,7 +51,7 @@ public class ImuNode implements NodeMain
 
     public void onStart(ConnectedNode node) {
         try {
-            this.publisher = node.newPublisher("android/imu", "sensor_msgs/Imu");
+            this.publisher = node.newPublisher(nodeName+"/imu", "sensor_msgs/Imu");
             // 	Determine if we have the various needed sensors
             boolean hasAccel = false;
             boolean hasGyro = false;
@@ -186,7 +188,7 @@ public class ImuNode implements NodeMain
                 // Convert event.timestamp (nanoseconds uptime) into system time, use that as the header stamp
                 long time_delta_millis = System.currentTimeMillis() - SystemClock.uptimeMillis();
                 this.imu.getHeader().setStamp(Time.fromMillis(time_delta_millis + event.timestamp/1000000));
-                this.imu.getHeader().setFrameId("/imu");// TODO Make parameter
+                this.imu.getHeader().setFrameId(nodeName+"/imu");// TODO Make parameter
 
                 publisher.publish(this.imu);
 

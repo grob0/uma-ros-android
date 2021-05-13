@@ -8,11 +8,11 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.hardware.SensorManager;
+import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.text.TextUtils;
-import android.util.Log;
 import android.view.WindowManager;
 import android.widget.Toast;
 
@@ -24,8 +24,6 @@ import androidx.camera.view.PreviewView;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-import com.google.android.gms.location.FusedLocationProviderClient;
-import com.google.android.gms.location.LocationServices;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import org.ros.address.InetAddressFactory;
@@ -55,16 +53,19 @@ public class MainActivity extends AppCompatActivity {
     private static final String[] COARSE_LOCATION_PERMISSION = new String[]{Manifest.permission.ACCESS_COARSE_LOCATION};
     private static final int COARSE_LOCATION_REQUEST_CODE = 10;
 
-    // Coarse location requests
+    // Fine location requests
     private static final String[] FINE_LOCATION_PERMISSION = new String[]{Manifest.permission.ACCESS_FINE_LOCATION};
     private static final int FINE_LOCATION_REQUEST_CODE = 10;
+
+    //private FusedLocationProviderClient fusedLocationClient;
+    private LocationManager mLocationManager;
 
     // IMU and Camera instances and views
     private SensorManager sensorManager;
     private ListenableFuture<ProcessCameraProvider> cameraProviderFuture;
     private PreviewView previewView;
 
-    private FusedLocationProviderClient fusedLocationClient;
+    private String nodeName = "android2";
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -76,20 +77,20 @@ public class MainActivity extends AppCompatActivity {
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         previewView = findViewById(R.id.previewView);
 
-        if (!hasCameraPermission()) {
-            requestCameraPermission();
+        // Request all 3 permissions if not granted yet
+        if(!hasPermission(0)) {
+            requestPermission(0);
         }
-        if (!hasCoarseLocationPermission()) {
-            requestCoarseLocationPermission();
+        if(!hasPermission(1)) {
+            requestPermission(1);
         }
-        if (!hasFineLocationPermission()) {
-            requestFineLocationPermission();
+        if(!hasPermission(2)) {
+            requestPermission(2);
         }
 
         nodeMainExecutorServiceConnection = new NodeMainExecutorServiceConnection(null);
         cameraProviderFuture = ProcessCameraProvider.getInstance(this);
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
-
+        mLocationManager = (LocationManager)this.getSystemService(Context.LOCATION_SERVICE);
     }
 
     @Override
@@ -157,56 +158,63 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // Checks if camera permission is granted
-    private boolean hasCameraPermission() {
-        return ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.CAMERA
-        ) == PackageManager.PERMISSION_GRANTED;
+    private boolean hasPermission(int permission) {
+        boolean have = false;
+        switch (permission) {
+            case 0: // Camera
+                have = ContextCompat.checkSelfPermission(
+                        this,
+                        Manifest.permission.CAMERA
+                ) == PackageManager.PERMISSION_GRANTED;
+                break;
+            case 1: // Coarse location
+                have = ContextCompat.checkSelfPermission(
+                        this,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                )== PackageManager.PERMISSION_GRANTED;
+                break;
+            case 2: // Fine location
+                have = ContextCompat.checkSelfPermission(
+                        this,
+                        Manifest.permission.ACCESS_FINE_LOCATION
+                )== PackageManager.PERMISSION_GRANTED;
+                break;
+        }
+        return have;
     }
 
     // Requests camera permission
-    private void requestCameraPermission() {
-        ActivityCompat.requestPermissions(
-                this,
-                CAMERA_PERMISSION,
-                CAMERA_REQUEST_CODE
-        );
-    }
-
-    private boolean hasCoarseLocationPermission() {
-        return ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-        )== PackageManager.PERMISSION_GRANTED;
-    }
-
-    private void requestCoarseLocationPermission() {
-        ActivityCompat.requestPermissions(
-                this,
-                COARSE_LOCATION_PERMISSION,
-                COARSE_LOCATION_REQUEST_CODE
-        );
-    }
-
-    private boolean hasFineLocationPermission() {
-        return ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_FINE_LOCATION
-        )== PackageManager.PERMISSION_GRANTED;
-    }
-
-    private void requestFineLocationPermission() {
-        ActivityCompat.requestPermissions(
-                this,
-                FINE_LOCATION_PERMISSION,
-                FINE_LOCATION_REQUEST_CODE
-        );
+    private void requestPermission(int permission) {
+        switch (permission) {
+            case 0: // Camera
+                ActivityCompat.requestPermissions(
+                        this,
+                        CAMERA_PERMISSION,
+                        CAMERA_REQUEST_CODE
+                );
+                break;
+            case 1: // Coarse location
+                ActivityCompat.requestPermissions(
+                        this,
+                        COARSE_LOCATION_PERMISSION,
+                        COARSE_LOCATION_REQUEST_CODE
+                );
+                break;
+            case 2: // Fine location
+                ActivityCompat.requestPermissions(
+                        this,
+                        FINE_LOCATION_PERMISSION,
+                        FINE_LOCATION_REQUEST_CODE
+                );
+                break;
+        }
     }
 
     protected void init(NodeMainExecutor nodeMainExecutor) {
-        ImuNode imuNode = new ImuNode(sensorManager);
-        CameraNode cameraNode = new CameraNode(this,cameraProviderFuture,previewView);
-        GPSNode gpsNode = new GPSNode(this,fusedLocationClient);
+        ImuNode imuNode = new ImuNode(sensorManager,nodeName);
+        CameraNode cameraNode = new CameraNode(this,cameraProviderFuture,previewView,nodeName);
+        GPSNode gpsNode = new GPSNode(this,mLocationManager,nodeName);
+
         //Network configuration with ROS master
         final NodeConfiguration nodeConfiguration = NodeConfiguration.newPublic(
                 InetAddressFactory.newNonLoopback().getHostAddress()
@@ -214,8 +222,8 @@ public class MainActivity extends AppCompatActivity {
         nodeConfiguration.setMasterUri(nodeMainExecutorService.getMasterUri());
 
         // Run nodes
-        //nodeMainExecutor.execute(imuNode, nodeConfiguration);
-        //nodeMainExecutor.execute(cameraNode, nodeConfiguration);
+        nodeMainExecutor.execute(imuNode, nodeConfiguration);
+        nodeMainExecutor.execute(cameraNode, nodeConfiguration);
         nodeMainExecutor.execute(gpsNode,nodeConfiguration);
     }
     

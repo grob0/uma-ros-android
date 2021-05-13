@@ -7,6 +7,8 @@
     <string name="select_text">Select the sensors you want to send via ROS</string>
     <string name="info_text">Esta aplicación ha sido desarrollada para el TFM titulado "Integración de sensores 5G con ROS para misiones de respuesta
 a emergencias".</string>
+<!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
 
 
 </resources>

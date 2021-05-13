@@ -55,25 +55,28 @@ public class CameraNode extends AbstractNodeMain {
     private final PreviewView previewView;
 
     private Time currentTime;
-    private final String frameId = "camera";
     private Publisher<CameraInfo> cameraInfoPublisher;
     private Publisher<CompressedImage> compressedImagePublisher;
+    private String nodeName;
+    private final String frameId = nodeName+"/camera";
 
-    public CameraNode(Context context, ListenableFuture<ProcessCameraProvider> cameraProviderFuture, PreviewView previewView) {
+
+    public CameraNode(Context context, ListenableFuture<ProcessCameraProvider> cameraProviderFuture, PreviewView previewView, String nodeName) {
         this.context = context;
         this.cameraProviderFuture = cameraProviderFuture;
         this.previewView = previewView;
+        this.nodeName = nodeName;
     }
     @Override
     public GraphName getDefaultNodeName()
     {
-        return GraphName.of("android/CameraNode");
+        return GraphName.of(nodeName+"/CameraNode");
     }
 
     @Override
     public void onStart(ConnectedNode connectedNode) {
-        cameraInfoPublisher = connectedNode.newPublisher("/android/camera/camera_info", CameraInfo._TYPE);
-        compressedImagePublisher = connectedNode.newPublisher("/android/camera/compressed", CompressedImage._TYPE);
+        cameraInfoPublisher = connectedNode.newPublisher(nodeName+"/camera/camera_info", CameraInfo._TYPE);
+        compressedImagePublisher = connectedNode.newPublisher(nodeName+"/camera/compressed", CompressedImage._TYPE);
         CameraInfo cameraInfo = cameraInfoPublisher.newMessage();
         CompressedImage compressedImage = compressedImagePublisher.newMessage();
 
