@@ -9,15 +9,19 @@ import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.hardware.SensorManager;
 import android.location.LocationManager;
+import android.media.AudioManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.provider.MediaStore;
+import android.provider.Settings;
 import android.text.TextUtils;
 import android.view.WindowManager;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
@@ -57,6 +61,10 @@ public class MainActivity extends AppCompatActivity {
     private static final String[] FINE_LOCATION_PERMISSION = new String[]{Manifest.permission.ACCESS_FINE_LOCATION};
     private static final int FINE_LOCATION_REQUEST_CODE = 10;
 
+    // Camera requests
+    private static final String[] AUDIO_PERMISSION = new String[]{Manifest.permission.RECORD_AUDIO};
+    private static final int AUDIO_REQUEST_CODE = 10;
+
     //private FusedLocationProviderClient fusedLocationClient;
     private LocationManager mLocationManager;
 
@@ -65,8 +73,11 @@ public class MainActivity extends AppCompatActivity {
     private ListenableFuture<ProcessCameraProvider> cameraProviderFuture;
     private PreviewView previewView;
 
-    private String nodeName = "android2";
+    private AudioManager mAudioManager;
 
+    private String nodeName = "android0";
+
+    @RequiresApi(api = Build.VERSION_CODES.N)
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -77,20 +88,33 @@ public class MainActivity extends AppCompatActivity {
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         previewView = findViewById(R.id.previewView);
 
-        // Request all 3 permissions if not granted yet
-        if(!hasPermission(0)) {
-            requestPermission(0);
+        if(!hasCameraPermission()) {
+            requestCameraPermission();
         }
-        if(!hasPermission(1)) {
-            requestPermission(1);
+        if(!hasFineLocationPermission()) {
+            requestFineLocationPermission();
         }
-        if(!hasPermission(2)) {
-            requestPermission(2);
+        /*
+        if(!hasAudioPermission()) {
+            requestAudioPermission();
         }
-
+        */
         nodeMainExecutorServiceConnection = new NodeMainExecutorServiceConnection(null);
         cameraProviderFuture = ProcessCameraProvider.getInstance(this);
-        mLocationManager = (LocationManager)this.getSystemService(Context.LOCATION_SERVICE);
+        mLocationManager = (LocationManager)this.getSystemService(LOCATION_SERVICE);
+
+        final boolean gpsEnabled = mLocationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
+        if (!gpsEnabled) {
+            // Build an alert dialog here that requests that the user enable
+            // the location services, then when the user clicks the "OK" button,
+            // call enableLocationSettings()
+            enableLocationSettings();
+        }
+
+        /*
+        mAudioManager = (AudioManager)this.getSystemService(AUDIO_SERVICE);
+        String x = mAudioManager.getProperty(AudioManager.PROPERTY_SUPPORT_AUDIO_SOURCE_UNPROCESSED);
+        */
     }
 
     @Override
@@ -108,6 +132,15 @@ public class MainActivity extends AppCompatActivity {
         if (!bindService(intent, nodeMainExecutorServiceConnection, BIND_AUTO_CREATE)) {
             Toast.makeText(this, "Failed to bind NodeMainExecutorService.", Toast.LENGTH_LONG).show();
         }
+
+
+
+
+    }
+
+    private void enableLocationSettings() {
+        Intent settingsIntent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+        startActivity(settingsIntent);
     }
 
     @Override
@@ -157,63 +190,73 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    // Checks if camera permission is granted
-    private boolean hasPermission(int permission) {
-        boolean have = false;
-        switch (permission) {
-            case 0: // Camera
-                have = ContextCompat.checkSelfPermission(
-                        this,
-                        Manifest.permission.CAMERA
-                ) == PackageManager.PERMISSION_GRANTED;
-                break;
-            case 1: // Coarse location
-                have = ContextCompat.checkSelfPermission(
-                        this,
-                        Manifest.permission.ACCESS_COARSE_LOCATION
-                )== PackageManager.PERMISSION_GRANTED;
-                break;
-            case 2: // Fine location
-                have = ContextCompat.checkSelfPermission(
-                        this,
-                        Manifest.permission.ACCESS_FINE_LOCATION
-                )== PackageManager.PERMISSION_GRANTED;
-                break;
-        }
-        return have;
+    private boolean hasCameraPermission() {
+        return ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.CAMERA
+        ) == PackageManager.PERMISSION_GRANTED;
     }
 
     // Requests camera permission
-    private void requestPermission(int permission) {
-        switch (permission) {
-            case 0: // Camera
-                ActivityCompat.requestPermissions(
-                        this,
-                        CAMERA_PERMISSION,
-                        CAMERA_REQUEST_CODE
-                );
-                break;
-            case 1: // Coarse location
-                ActivityCompat.requestPermissions(
-                        this,
-                        COARSE_LOCATION_PERMISSION,
-                        COARSE_LOCATION_REQUEST_CODE
-                );
-                break;
-            case 2: // Fine location
-                ActivityCompat.requestPermissions(
-                        this,
-                        FINE_LOCATION_PERMISSION,
-                        FINE_LOCATION_REQUEST_CODE
-                );
-                break;
-        }
+    private void requestCameraPermission() {
+        ActivityCompat.requestPermissions(
+                this,
+                CAMERA_PERMISSION,
+                CAMERA_REQUEST_CODE
+        );
+    }
+
+    private boolean hasCoarseLocationPermission() {
+        return ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+        )== PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void requestCoarseLocationPermission() {
+        ActivityCompat.requestPermissions(
+                this,
+                COARSE_LOCATION_PERMISSION,
+                COARSE_LOCATION_REQUEST_CODE
+        );
+    }
+
+    private boolean hasFineLocationPermission() {
+        return ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+        )== PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void requestFineLocationPermission() {
+        ActivityCompat.requestPermissions(
+                this,
+                FINE_LOCATION_PERMISSION,
+                FINE_LOCATION_REQUEST_CODE
+        );
+    }
+
+    private boolean hasAudioPermission() {
+        return ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    // Requests camera permission
+    private void requestAudioPermission() {
+        ActivityCompat.requestPermissions(
+                this,
+                AUDIO_PERMISSION,
+                AUDIO_REQUEST_CODE
+        );
     }
 
     protected void init(NodeMainExecutor nodeMainExecutor) {
         ImuNode imuNode = new ImuNode(sensorManager,nodeName);
         CameraNode cameraNode = new CameraNode(this,cameraProviderFuture,previewView,nodeName);
         GPSNode gpsNode = new GPSNode(this,mLocationManager,nodeName);
+        //AudioNode audioNode = new AudioNode(this,nodeName,mAudioManager);
 
         //Network configuration with ROS master
         final NodeConfiguration nodeConfiguration = NodeConfiguration.newPublic(
@@ -225,6 +268,7 @@ public class MainActivity extends AppCompatActivity {
         nodeMainExecutor.execute(imuNode, nodeConfiguration);
         nodeMainExecutor.execute(cameraNode, nodeConfiguration);
         nodeMainExecutor.execute(gpsNode,nodeConfiguration);
+        //nodeMainExecutor.execute(audioNode,nodeConfiguration);
     }
     
     @SuppressWarnings("NonStaticInnerClassInSecureContext")
