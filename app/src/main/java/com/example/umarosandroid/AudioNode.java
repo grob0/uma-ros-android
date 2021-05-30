@@ -1,10 +1,13 @@
 package com.example.umarosandroid;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
+
+import androidx.core.util.Preconditions;
 
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBufferOutputStream;
@@ -50,6 +53,8 @@ public class AudioNode extends AbstractNodeMain {
             short[] buffer;
             int bufferSize;
             int samplingRate;
+            byte[] buffer_bytearray = {};
+
 
             private final ChannelBufferOutputStream stream = new ChannelBufferOutputStream(MessageBuffers.dynamicBuffer());
             @Override
@@ -72,15 +77,38 @@ public class AudioNode extends AbstractNodeMain {
             @Override
             protected void loop() throws InterruptedException {
                 int bufferResults = mRecord.read(buffer,0,bufferSize/4);
-                byte[] buffer_bytearray = {};
-                ByteBuffer.wrap(buffer_bytearray).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().put(buffer);
+                updateAudio(buffer);
+                Thread.sleep(100);
+            }
+
+            @SuppressLint("RestrictedApi")
+            public void updateAudio(short[] buffer) {
+                Preconditions.checkNotNull(buffer);
+
+                buffer_bytearray = ShortToByte(buffer);
                 stream.buffer().writeBytes(buffer_bytearray);
-
-
                 audioMsg.setData(stream.buffer().copy());
                 stream.buffer().clear();
+
                 audioPubliser.publish(audioMsg);
-                Thread.sleep(1/samplingRate);
+            }
+            byte [] ShortToByte(short [] input) {
+                int short_index, byte_index;
+                int iterations = input.length;
+
+                byte [] buffer = new byte[input.length * 2];
+
+                short_index = byte_index = 0;
+
+                for(/*NOP*/; short_index != iterations; /*NOP*/)
+                {
+                    buffer[byte_index]     = (byte) (input[short_index] & 0x00FF);
+                    buffer[byte_index + 1] = (byte) ((input[short_index] & 0xFF00) >> 8);
+
+                    ++short_index; byte_index += 2;
+                }
+
+                return buffer;
             }
         });
     }

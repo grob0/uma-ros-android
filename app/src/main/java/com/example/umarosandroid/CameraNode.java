@@ -52,19 +52,19 @@ public class CameraNode extends AbstractNodeMain {
 
     private final int HEIGHT = 1080;
     private final int WIDTH = 1920;
-    private final PreviewView previewView;
+    //private final PreviewView previewView;
 
     private Time currentTime;
     private Publisher<CameraInfo> cameraInfoPublisher;
     private Publisher<CompressedImage> compressedImagePublisher;
     private String nodeName;
-    private final String frameId = nodeName+"/camera";
+    private  String frameId;
 
 
-    public CameraNode(Context context, ListenableFuture<ProcessCameraProvider> cameraProviderFuture, PreviewView previewView, String nodeName) {
+    public CameraNode(Context context, ListenableFuture<ProcessCameraProvider> cameraProviderFuture, String nodeName) {
         this.context = context;
         this.cameraProviderFuture = cameraProviderFuture;
-        this.previewView = previewView;
+        //this.previewView = previewView;
         this.nodeName = nodeName;
     }
     @Override
@@ -75,6 +75,7 @@ public class CameraNode extends AbstractNodeMain {
 
     @Override
     public void onStart(ConnectedNode connectedNode) {
+        frameId = nodeName+"/camera";
         cameraInfoPublisher = connectedNode.newPublisher(nodeName+"/camera/camera_info", CameraInfo._TYPE);
         compressedImagePublisher = connectedNode.newPublisher(nodeName+"/camera/compressed", CompressedImage._TYPE);
         CameraInfo cameraInfo = cameraInfoPublisher.newMessage();
@@ -103,8 +104,8 @@ public class CameraNode extends AbstractNodeMain {
             }
 
             void bindPreviewAndAnalysis(@NonNull ProcessCameraProvider cameraProvider) {
-                Preview preview = new Preview.Builder()
-                        .build();
+                //Preview preview = new Preview.Builder()
+                //        .build();
                 ImageAnalysis imageAnalysis =
                         new ImageAnalysis.Builder()
                                 .setTargetResolution(new Size(WIDTH, HEIGHT))
@@ -115,7 +116,7 @@ public class CameraNode extends AbstractNodeMain {
                         .requireLensFacing(CameraSelector.LENS_FACING_BACK)
                         .build();
 
-                preview.setSurfaceProvider(previewView.getSurfaceProvider());
+                //preview.setSurfaceProvider(previewView.getSurfaceProvider());
 
                 imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(context), new ImageAnalysis.Analyzer() {
                     // analyze is called everytime a frame is captured so this is our main loop
@@ -131,7 +132,7 @@ public class CameraNode extends AbstractNodeMain {
                         imageProxy.close();
                     }
                 });
-                Camera camera = cameraProvider.bindToLifecycle((LifecycleOwner) context, cameraSelector, imageAnalysis,preview);
+                Camera camera = cameraProvider.bindToLifecycle((LifecycleOwner) context, cameraSelector, imageAnalysis);
             }
 
             private byte[] imageProxyToYuvImage(ImageProxy image) {
@@ -169,7 +170,7 @@ public class CameraNode extends AbstractNodeMain {
 
                 YuvImage yuvImage = new YuvImage(nv21, ImageFormat.NV21, width, height, null);
                 ByteArrayOutputStream out = new ByteArrayOutputStream();
-                yuvImage.compressToJpeg(new Rect(0, 0, width, height), 25, out);
+                yuvImage.compressToJpeg(new Rect(0, 0, width, height), 50, out);
                 compressedImage.setFormat("jpeg");
 
                 stream.buffer().writeBytes(out.toByteArray());

@@ -2,6 +2,7 @@ package com.example.umarosandroid;
 
 import android.Manifest;
 
+import android.annotation.SuppressLint;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -17,6 +18,7 @@ import android.provider.MediaStore;
 import android.provider.Settings;
 import android.text.TextUtils;
 import android.view.WindowManager;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
@@ -36,6 +38,7 @@ import org.ros.android.NodeMainExecutorService;
 import org.ros.exception.RosRuntimeException;
 import org.ros.node.NodeConfiguration;
 import org.ros.node.NodeMainExecutor;
+import org.w3c.dom.Text;
 
 import java.net.NetworkInterface;
 import java.net.SocketException;
@@ -45,6 +48,17 @@ import java.net.URISyntaxException;
 
 public class MainActivity extends AppCompatActivity {
     private static final int MASTER_CHOOSER_REQUEST_CODE = 0;
+
+    private String nodeName = "androidA";
+    TextView nameView;
+    boolean enableCamera = true;
+    TextView cameraView;
+    boolean enableIMU = true;
+    TextView imuView;
+    boolean enableAudio = true;
+    TextView audioView;
+    boolean enableGPS = true;
+    TextView gpsView;
 
     private ServiceConnection nodeMainExecutorServiceConnection;
     private NodeMainExecutorService nodeMainExecutorService;
@@ -71,12 +85,11 @@ public class MainActivity extends AppCompatActivity {
     // IMU and Camera instances and views
     private SensorManager sensorManager;
     private ListenableFuture<ProcessCameraProvider> cameraProviderFuture;
-    private PreviewView previewView;
+    //private PreviewView previewView;
 
     private AudioManager mAudioManager;
 
-    private String nodeName = "android0";
-
+    @SuppressLint("SetTextI18n")
     @RequiresApi(api = Build.VERSION_CODES.N)
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -85,36 +98,75 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
-        sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        previewView = findViewById(R.id.previewView);
+        //previewView = findViewById(R.id.previewView);
 
-        if(!hasCameraPermission()) {
-            requestCameraPermission();
-        }
-        if(!hasFineLocationPermission()) {
-            requestFineLocationPermission();
-        }
-        /*
-        if(!hasAudioPermission()) {
-            requestAudioPermission();
-        }
-        */
+        nameView = (TextView) findViewById(R.id.nameText);
+        nameView.setText("Name: "+ nodeName);
+        cameraView = (TextView) findViewById(R.id.cameraText);
+        imuView = (TextView) findViewById(R.id.ImuText);
+        audioView = (TextView) findViewById(R.id.audioText);
+        gpsView = (TextView) findViewById(R.id.GPSText);
+
         nodeMainExecutorServiceConnection = new NodeMainExecutorServiceConnection(null);
-        cameraProviderFuture = ProcessCameraProvider.getInstance(this);
-        mLocationManager = (LocationManager)this.getSystemService(LOCATION_SERVICE);
 
-        final boolean gpsEnabled = mLocationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
-        if (!gpsEnabled) {
-            // Build an alert dialog here that requests that the user enable
-            // the location services, then when the user clicks the "OK" button,
-            // call enableLocationSettings()
-            enableLocationSettings();
+        if(enableCamera) {
+            if(!hasCameraPermission()) {
+                requestCameraPermission();
+            }
+
+            cameraProviderFuture = ProcessCameraProvider.getInstance(this);
+            cameraView.setText(R.string.camera_on);
+
+        }
+        else {
+            cameraView.setText(R.string.camera_off);
         }
 
-        /*
-        mAudioManager = (AudioManager)this.getSystemService(AUDIO_SERVICE);
+        if(enableIMU) {
+            sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+            imuView.setText(R.string.imu_on);
+
+        }
+        else {
+            imuView.setText(R.string.imu_off);
+        }
+
+        if(enableGPS) {
+            if(!hasFineLocationPermission()) {
+                requestFineLocationPermission();
+            }
+            mLocationManager = (LocationManager)this.getSystemService(LOCATION_SERVICE);
+            final boolean gpsEnabled = mLocationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
+            if (!gpsEnabled) {
+                // Build an alert dialog here that requests that the user enable
+                // the location services, then when the user clicks the "OK" button,
+                // call enableLocationSettings()
+                enableLocationSettings();
+            }
+
+            gpsView.setText(R.string.gps_on);
+
+        }
+        else {
+            gpsView.setText(R.string.gps_off);
+        }
+
+        if(enableAudio) {
+
+            if(!hasAudioPermission()) {
+                requestAudioPermission();
+            }
+
+            mAudioManager = (AudioManager)this.getSystemService(AUDIO_SERVICE);
+            audioView.setText(R.string.audio_on);
+
+        }
+        else {
+            audioView.setText(R.string.audio_off);
+        }
+
         String x = mAudioManager.getProperty(AudioManager.PROPERTY_SUPPORT_AUDIO_SOURCE_UNPROCESSED);
-        */
+
     }
 
     @Override
@@ -253,10 +305,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     protected void init(NodeMainExecutor nodeMainExecutor) {
-        ImuNode imuNode = new ImuNode(sensorManager,nodeName);
-        CameraNode cameraNode = new CameraNode(this,cameraProviderFuture,previewView,nodeName);
-        GPSNode gpsNode = new GPSNode(this,mLocationManager,nodeName);
-        //AudioNode audioNode = new AudioNode(this,nodeName,mAudioManager);
 
         //Network configuration with ROS master
         final NodeConfiguration nodeConfiguration = NodeConfiguration.newPublic(
@@ -265,11 +313,25 @@ public class MainActivity extends AppCompatActivity {
         nodeConfiguration.setMasterUri(nodeMainExecutorService.getMasterUri());
 
         // Run nodes
-        nodeMainExecutor.execute(imuNode, nodeConfiguration);
-        nodeMainExecutor.execute(cameraNode, nodeConfiguration);
-        nodeMainExecutor.execute(gpsNode,nodeConfiguration);
-        //nodeMainExecutor.execute(audioNode,nodeConfiguration);
+        if(enableCamera) {
+            CameraNode cameraNode = new CameraNode(this,cameraProviderFuture,nodeName);
+            nodeMainExecutor.execute(cameraNode, nodeConfiguration);
+        }
+        if(enableAudio) {
+            AudioNode audioNode = new AudioNode(this,nodeName,mAudioManager);
+            nodeMainExecutor.execute(audioNode,nodeConfiguration);
+        }
+        if(enableGPS) {
+            GPSNode gpsNode = new GPSNode(this,mLocationManager,nodeName);
+            nodeMainExecutor.execute(gpsNode,nodeConfiguration);
+
+        }
+        if(enableIMU) {
+            ImuNode imuNode = new ImuNode(sensorManager,nodeName);
+            nodeMainExecutor.execute(imuNode, nodeConfiguration);
+        }
     }
+
     
     @SuppressWarnings("NonStaticInnerClassInSecureContext")
     private final class NodeMainExecutorServiceConnection implements ServiceConnection {
