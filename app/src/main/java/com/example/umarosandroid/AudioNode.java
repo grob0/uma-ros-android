@@ -21,6 +21,7 @@ import org.ros.node.topic.Publisher;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
+import std_msgs.UInt16MultiArray;
 import std_msgs.UInt8;
 import std_msgs.UInt8MultiArray;
 
@@ -30,7 +31,7 @@ public class AudioNode extends AbstractNodeMain {
     private String nodeName;
     private AudioManager audioManager;
 
-    private Publisher<UInt8MultiArray> audioPubliser;
+    private Publisher<UInt16MultiArray> audioPubliser;
 
     public AudioNode(Context context, String nodeName, AudioManager audioManager) {
         this.context = context;
@@ -46,14 +47,14 @@ public class AudioNode extends AbstractNodeMain {
 
     @Override
     public void onStart(ConnectedNode connectedNode) {
-        audioPubliser = connectedNode.newPublisher(nodeName+"/audio",UInt8MultiArray._TYPE);
-        UInt8MultiArray audioMsg = audioPubliser.newMessage();
+        audioPubliser = connectedNode.newPublisher(nodeName+"/audio",UInt16MultiArray._TYPE);
+        UInt16MultiArray audioMsg = audioPubliser.newMessage();
         connectedNode.executeCancellableLoop(new CancellableLoop() {
             AudioRecord mRecord;
             short[] buffer;
             int bufferSize;
             int samplingRate;
-            byte[] buffer_bytearray = {};
+            //byte[] buffer_bytearray = {};
 
 
             private final ChannelBufferOutputStream stream = new ChannelBufferOutputStream(MessageBuffers.dynamicBuffer());
@@ -84,10 +85,11 @@ public class AudioNode extends AbstractNodeMain {
             @SuppressLint("RestrictedApi")
             public void updateAudio(short[] buffer) {
                 Preconditions.checkNotNull(buffer);
-
+                /*
                 buffer_bytearray = ShortToByte(buffer);
                 stream.buffer().writeBytes(buffer_bytearray);
-                audioMsg.setData(stream.buffer().copy());
+                */
+                audioMsg.setData(buffer);
                 stream.buffer().clear();
 
                 audioPubliser.publish(audioMsg);

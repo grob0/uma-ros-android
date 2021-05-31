@@ -51,13 +51,13 @@ public class MainActivity extends AppCompatActivity {
 
     private String nodeName = "androidA";
     TextView nameView;
-    boolean enableCamera = true;
+    boolean enableCamera = false;
     TextView cameraView;
     boolean enableIMU = true;
     TextView imuView;
     boolean enableAudio = true;
     TextView audioView;
-    boolean enableGPS = true;
+    boolean enableGPS = false;
     TextView gpsView;
 
     private ServiceConnection nodeMainExecutorServiceConnection;
