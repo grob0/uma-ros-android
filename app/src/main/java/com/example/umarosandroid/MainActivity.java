@@ -3,6 +3,7 @@ package com.example.umarosandroid;
 import android.Manifest;
 
 import android.annotation.SuppressLint;
+import android.app.Service;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -11,6 +12,7 @@ import android.content.pm.PackageManager;
 import android.hardware.SensorManager;
 import android.location.LocationManager;
 import android.media.AudioManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -49,16 +51,19 @@ import java.net.URISyntaxException;
 public class MainActivity extends AppCompatActivity {
     private static final int MASTER_CHOOSER_REQUEST_CODE = 0;
 
-    private String nodeName = "androidA";
     TextView nameView;
-    boolean enableCamera = false;
+
     TextView cameraView;
-    boolean enableIMU = true;
     TextView imuView;
-    boolean enableAudio = true;
     TextView audioView;
-    boolean enableGPS = false;
     TextView gpsView;
+
+    boolean enableCamera;
+    boolean enableAudio;
+    boolean enableGps;
+    boolean enableImu;
+
+    String nodeName = "";
 
     private ServiceConnection nodeMainExecutorServiceConnection;
     private NodeMainExecutorService nodeMainExecutorService;
@@ -98,6 +103,25 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
+        Intent intent = getIntent();
+        String masterUri = intent.getStringExtra(SetupActivity.MASTER_URI);
+        String masterPort = intent.getStringExtra(SetupActivity.MASTER_PORT);
+
+        nodeName = intent.getStringExtra(SetupActivity.NODE_NAME);
+
+        enableCamera = intent.getBooleanExtra(SetupActivity.ENABLE_CAMERA,false);
+        enableAudio = intent.getBooleanExtra(SetupActivity.ENABLE_AUDIO,false);
+        enableGps= intent.getBooleanExtra(SetupActivity.ENABLE_GPS,false);
+        enableImu = intent.getBooleanExtra(SetupActivity.ENABLE_IMU,false);
+
+        System.out.println("http://"+masterUri+":"+masterPort+"/");
+        URI customUri = null;
+
+        try {
+            customUri = new URI("http://"+masterUri+":"+masterPort+"/");
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+        }
         //previewView = findViewById(R.id.previewView);
 
         nameView = (TextView) findViewById(R.id.nameText);
@@ -107,7 +131,7 @@ public class MainActivity extends AppCompatActivity {
         audioView = (TextView) findViewById(R.id.audioText);
         gpsView = (TextView) findViewById(R.id.GPSText);
 
-        nodeMainExecutorServiceConnection = new NodeMainExecutorServiceConnection(null);
+        nodeMainExecutorServiceConnection = new NodeMainExecutorServiceConnection(customUri);
 
         if(enableCamera) {
             if(!hasCameraPermission()) {
@@ -122,16 +146,21 @@ public class MainActivity extends AppCompatActivity {
             cameraView.setText(R.string.camera_off);
         }
 
-        if(enableIMU) {
-            sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-            imuView.setText(R.string.imu_on);
+        if(enableAudio) {
+
+            if(!hasAudioPermission()) {
+                requestAudioPermission();
+            }
+
+            mAudioManager = (AudioManager)this.getSystemService(AUDIO_SERVICE);
+            audioView.setText(R.string.audio_on);
 
         }
         else {
-            imuView.setText(R.string.imu_off);
+            audioView.setText(R.string.audio_off);
         }
 
-        if(enableGPS) {
+        if(enableGps) {
             if(!hasFineLocationPermission()) {
                 requestFineLocationPermission();
             }
@@ -151,18 +180,13 @@ public class MainActivity extends AppCompatActivity {
             gpsView.setText(R.string.gps_off);
         }
 
-        if(enableAudio) {
-
-            if(!hasAudioPermission()) {
-                requestAudioPermission();
-            }
-
-            mAudioManager = (AudioManager)this.getSystemService(AUDIO_SERVICE);
-            audioView.setText(R.string.audio_on);
+        if(enableImu) {
+            sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+            imuView.setText(R.string.imu_on);
 
         }
         else {
-            audioView.setText(R.string.audio_off);
+            imuView.setText(R.string.imu_off);
         }
 
         String x = mAudioManager.getProperty(AudioManager.PROPERTY_SUPPORT_AUDIO_SOURCE_UNPROCESSED);
@@ -184,9 +208,6 @@ public class MainActivity extends AppCompatActivity {
         if (!bindService(intent, nodeMainExecutorServiceConnection, BIND_AUTO_CREATE)) {
             Toast.makeText(this, "Failed to bind NodeMainExecutorService.", Toast.LENGTH_LONG).show();
         }
-
-
-
 
     }
 
@@ -321,12 +342,12 @@ public class MainActivity extends AppCompatActivity {
             AudioNode audioNode = new AudioNode(this,nodeName,mAudioManager);
             nodeMainExecutor.execute(audioNode,nodeConfiguration);
         }
-        if(enableGPS) {
+        if(enableGps) {
             GPSNode gpsNode = new GPSNode(this,mLocationManager,nodeName);
             nodeMainExecutor.execute(gpsNode,nodeConfiguration);
 
         }
-        if(enableIMU) {
+        if(enableImu) {
             ImuNode imuNode = new ImuNode(sensorManager,nodeName);
             nodeMainExecutor.execute(imuNode, nodeConfiguration);
         }
@@ -359,10 +380,12 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
             if (nodeMainExecutorService.getMasterUri() == null) {
+
                 startActivityForResult(
                         new Intent(MainActivity.this, MasterChooser.class),
                         MASTER_CHOOSER_REQUEST_CODE
                 );
+
             } else {
                 init(nodeMainExecutorService);
             }
