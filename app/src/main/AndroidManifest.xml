@@ -23,7 +23,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.umarosandroid"
+        android:theme="@style/uma_ros_android_theme"
         tools:ignore="GoogleAppIndexingWarning"
         tools:replace="android:icon">
         <!--ROS-->

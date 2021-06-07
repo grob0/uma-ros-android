@@ -62,6 +62,8 @@ public class MainActivity extends AppCompatActivity {
     boolean enableAudio;
     boolean enableGps;
     boolean enableImu;
+    boolean enableNlp;
+
 
     String nodeName = "";
 
@@ -113,6 +115,7 @@ public class MainActivity extends AppCompatActivity {
         enableAudio = intent.getBooleanExtra(SetupActivity.ENABLE_AUDIO,false);
         enableGps= intent.getBooleanExtra(SetupActivity.ENABLE_GPS,false);
         enableImu = intent.getBooleanExtra(SetupActivity.ENABLE_IMU,false);
+        enableNlp = intent.getBooleanExtra(SetupActivity.ENABLE_NLP,false);
 
         System.out.println("http://"+masterUri+":"+masterPort+"/");
         URI customUri = null;
@@ -154,6 +157,7 @@ public class MainActivity extends AppCompatActivity {
 
             mAudioManager = (AudioManager)this.getSystemService(AUDIO_SERVICE);
             audioView.setText(R.string.audio_on);
+            String x = mAudioManager.getProperty(AudioManager.PROPERTY_SUPPORT_AUDIO_SOURCE_UNPROCESSED);
 
         }
         else {
@@ -189,7 +193,6 @@ public class MainActivity extends AppCompatActivity {
             imuView.setText(R.string.imu_off);
         }
 
-        String x = mAudioManager.getProperty(AudioManager.PROPERTY_SUPPORT_AUDIO_SOURCE_UNPROCESSED);
 
     }
 
@@ -257,6 +260,8 @@ public class MainActivity extends AppCompatActivity {
                 // Run init() in a new thread as a convenience since it often requires network access.
                 new Thread(() -> init(nodeMainExecutorService)).start();
             } else {
+                Toast.makeText(MainActivity.this, "Hola init", Toast.LENGTH_LONG).show();
+
                 // Without a master URI configured, we are in an unusable state.
                 nodeMainExecutorService.forceShutdown();
             }
@@ -341,6 +346,9 @@ public class MainActivity extends AppCompatActivity {
         if(enableAudio) {
             AudioNode audioNode = new AudioNode(this,nodeName,mAudioManager);
             nodeMainExecutor.execute(audioNode,nodeConfiguration);
+
+            NLPNode nlpNode = new NLPNode(nodeName,enableNlp);
+            nodeMainExecutor.execute(nlpNode,nodeConfiguration);
         }
         if(enableGps) {
             GPSNode gpsNode = new GPSNode(this,mLocationManager,nodeName);
@@ -387,6 +395,7 @@ public class MainActivity extends AppCompatActivity {
                 );
 
             } else {
+                Toast.makeText(MainActivity.this, "Hola init", Toast.LENGTH_LONG).show();
                 init(nodeMainExecutorService);
             }
         }

@@ -16,8 +16,10 @@ import org.ros.internal.message.MessageBuffers;
 import org.ros.namespace.GraphName;
 import org.ros.node.AbstractNodeMain;
 import org.ros.node.ConnectedNode;
+import org.ros.node.Node;
 import org.ros.node.topic.Publisher;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
@@ -32,6 +34,15 @@ public class AudioNode extends AbstractNodeMain {
     private AudioManager audioManager;
 
     private Publisher<UInt16MultiArray> audioPubliser;
+
+    private static final int RECORDER_SAMPLERATE = 44100;
+    private static final int RECORDER_CHANNELS = AudioFormat.CHANNEL_IN_MONO;
+    private static final int RECORDER_AUDIO_ENCODING = AudioFormat.ENCODING_PCM_16BIT;
+    private AudioRecord recorder = null;
+    private boolean isRecording = false;
+
+    int BufferElements2Rec = 1024; // want to play 2048 (2K) since 2 bytes we use only 1024
+    int BytesPerElement = 2; // 2 bytes in 16bit format
 
     public AudioNode(Context context, String nodeName, AudioManager audioManager) {
         this.context = context;
@@ -49,51 +60,49 @@ public class AudioNode extends AbstractNodeMain {
     public void onStart(ConnectedNode connectedNode) {
         audioPubliser = connectedNode.newPublisher(nodeName+"/audio",UInt16MultiArray._TYPE);
         UInt16MultiArray audioMsg = audioPubliser.newMessage();
+
+        int bufferSize = AudioRecord.getMinBufferSize(RECORDER_SAMPLERATE,
+                RECORDER_CHANNELS, RECORDER_AUDIO_ENCODING);
+
         connectedNode.executeCancellableLoop(new CancellableLoop() {
-            AudioRecord mRecord;
-            short[] buffer;
-            int bufferSize;
-            int samplingRate;
-            //byte[] buffer_bytearray = {};
+            short[] sData = new short[BufferElements2Rec];
+            byte[] bData;
+            int bufferResults;
 
 
             private final ChannelBufferOutputStream stream = new ChannelBufferOutputStream(MessageBuffers.dynamicBuffer());
             @Override
             protected void setup() {
-                int audioSource = MediaRecorder.AudioSource.MIC;
-                samplingRate = 11025;
-                int channelConfig = AudioFormat.CHANNEL_IN_DEFAULT;
-                int audioFormat = AudioFormat.ENCODING_PCM_16BIT;
 
-                bufferSize = AudioRecord.getMinBufferSize(samplingRate,channelConfig,audioFormat);
+                recorder = new AudioRecord(MediaRecorder.AudioSource.MIC,
+                        RECORDER_SAMPLERATE, RECORDER_CHANNELS,
+                        RECORDER_AUDIO_ENCODING, BufferElements2Rec * BytesPerElement);
 
-                buffer = new short[bufferSize/4];
-                mRecord = new AudioRecord(audioSource,samplingRate,channelConfig,audioFormat,bufferSize);
-
-                mRecord.startRecording();
-
-                int noAllRead = 0;
+                recorder.startRecording();
+                isRecording = true;
             }
 
             @Override
             protected void loop() throws InterruptedException {
-                int bufferResults = mRecord.read(buffer,0,bufferSize/4);
-                updateAudio(buffer);
-                Thread.sleep(100);
+                bufferResults = recorder.read(sData,0,BufferElements2Rec);
+                updateAudio(sData);
             }
+
 
             @SuppressLint("RestrictedApi")
             public void updateAudio(short[] buffer) {
                 Preconditions.checkNotNull(buffer);
-                /*
-                buffer_bytearray = ShortToByte(buffer);
-                stream.buffer().writeBytes(buffer_bytearray);
-                */
-                audioMsg.setData(buffer);
-                stream.buffer().clear();
+                //bData = ShortToByte(buffer);
+                //stream.buffer().writeBytes(bData);
+
+                audioMsg.setData(sData);
+                //stream.buffer().clear();
 
                 audioPubliser.publish(audioMsg);
             }
+
+
+
             byte [] ShortToByte(short [] input) {
                 int short_index, byte_index;
                 int iterations = input.length;
@@ -113,5 +122,21 @@ public class AudioNode extends AbstractNodeMain {
                 return buffer;
             }
         });
+
+    }
+
+    @Override
+    public void onShutdown(Node node) {
+        stopRecording();
+    }
+
+    private void stopRecording() {
+        // stops the recording activity
+        if (null != recorder) {
+            isRecording = false;
+            recorder.stop();
+            recorder.release();
+            recorder = null;
+        }
     }
 }

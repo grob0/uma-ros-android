@@ -31,7 +31,6 @@
                 android:layout_height="wrap_content"
                 android:text="Provide ROS Master details to connect"
                 android:textAlignment="center"
-                android:textColor="@android:color/black"
                 android:textStyle="bold"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
@@ -53,7 +52,6 @@
                     android:layout_weight="1"
 
                     android:text="IP address :"
-                    android:textColor="@android:color/black"
                     android:textStyle="bold" />
 
                 <EditText
@@ -80,7 +78,6 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="Port number : "
-                    android:textColor="@android:color/black"
                     android:textStyle="bold" />
 
                 <EditText
@@ -110,7 +107,6 @@
                 android:layout_height="wrap_content"
                 android:text="Provide the smartphone node name"
                 android:textAlignment="center"
-                android:textColor="@android:color/black"
                 android:textStyle="bold"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
@@ -132,7 +128,6 @@
                     android:layout_weight="1"
 
                     android:text="Node name :"
-                    android:textColor="@android:color/black"
                     android:textStyle="bold" />
 
                 <EditText
@@ -189,9 +184,8 @@
                 android:id="@+id/linearLayout"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toEndOf="@+id/linearLayout2"
-                app:layout_constraintStart_toStartOf="@+id/linearLayout2"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/linearLayout2">
 
                 <Switch
@@ -212,6 +206,25 @@
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toEndOf="@+id/GPSSwitch"
                     app:layout_constraintTop_toBottomOf="@+id/AudioSwitch"
+                    tools:ignore="UseSwitchCompatOrMaterialXml" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/linearLayout3"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/linearLayout">
+
+                <Switch
+                    android:id="@+id/NLPSwitch"
+                    android:layout_width="100dp"
+                    android:layout_height="wrap_content"
+                    android:text="NLP"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
                     tools:ignore="UseSwitchCompatOrMaterialXml" />
             </LinearLayout>
     </androidx.constraintlayout.widget.ConstraintLayout>

@@ -32,6 +32,7 @@ public class SetupActivity extends AppCompatActivity {
     public static final String ENABLE_GPS = "com.example.umarosandroid.ENABLE_GPS";
     public static final String ENABLE_IMU = "com.example.umarosandroid.ENABLE_IMU";
 
+    public static final String ENABLE_NLP = "com.example.umarosandroid.ENABLE_NLP";
 
     EditText masterURI;
     EditText masterPort;
@@ -42,6 +43,8 @@ public class SetupActivity extends AppCompatActivity {
     Switch audioSwitch;
     Switch gpsSwitch;
     Switch imuSwitch;
+
+    Switch nlpSwitch;
 
     Button connectButton;
 
@@ -62,6 +65,7 @@ public class SetupActivity extends AppCompatActivity {
     boolean enableAudio;
     boolean enableGps;
     boolean enableImu;
+    boolean enableNlp;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -79,7 +83,7 @@ public class SetupActivity extends AppCompatActivity {
         audioSwitch = (Switch) findViewById(R.id.AudioSwitch);
         gpsSwitch = (Switch) findViewById(R.id.GPSSwitch);
         imuSwitch = (Switch) findViewById(R.id.IMUSwitch);
-
+        nlpSwitch = (Switch) findViewById(R.id.NLPSwitch);
 
         masterURI.addTextChangedListener(new TextWatcher() {
             @Override
@@ -179,6 +183,13 @@ public class SetupActivity extends AppCompatActivity {
                 System.out.println("IMU toggled");
             }
         });
+        nlpSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                enableNlp = isChecked;
+                System.out.println("NLP toggled");
+            }
+        });
 
 
         connectButton.setOnClickListener(new View.OnClickListener() {
@@ -192,6 +203,8 @@ public class SetupActivity extends AppCompatActivity {
                 mIntent.putExtra(ENABLE_AUDIO,enableAudio);
                 mIntent.putExtra(ENABLE_GPS,enableGps);
                 mIntent.putExtra(ENABLE_IMU,enableImu);
+                mIntent.putExtra(ENABLE_NLP,enableNlp);
+
                 startActivity(mIntent);
             }
         });
