@@ -153,7 +153,7 @@ public class GPSNode implements NodeMain {
         {
             if (node != null)
             {
-                node.getLog().fatal(e);
+                //node.getLog().fatal(e);
             }
             else
             {

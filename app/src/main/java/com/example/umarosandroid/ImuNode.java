@@ -85,7 +85,7 @@ public class ImuNode implements NodeMain
         {
             if (node != null)
             {
-                node.getLog().fatal(e);
+                //node.getLog().fatal(e);
             }
             else
             {

@@ -11,6 +11,7 @@ import androidx.core.util.Preconditions;
 
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBufferOutputStream;
+import org.opencv.android.Utils;
 import org.ros.concurrent.CancellableLoop;
 import org.ros.internal.message.MessageBuffers;
 import org.ros.namespace.GraphName;
@@ -19,6 +20,9 @@ import org.ros.node.ConnectedNode;
 import org.ros.node.Node;
 import org.ros.node.topic.Publisher;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -33,16 +37,17 @@ public class AudioNode extends AbstractNodeMain {
     private String nodeName;
     private AudioManager audioManager;
 
-    private Publisher<UInt16MultiArray> audioPubliser;
+    //private Publisher<UInt16MultiArray> audioPubliser;
+    private Publisher<UInt8MultiArray> audioPubliser;
+
 
     private static final int RECORDER_SAMPLERATE = 44100;
     private static final int RECORDER_CHANNELS = AudioFormat.CHANNEL_IN_MONO;
     private static final int RECORDER_AUDIO_ENCODING = AudioFormat.ENCODING_PCM_16BIT;
-    private AudioRecord recorder = null;
+    int minBufferSize = AudioRecord.getMinBufferSize(RECORDER_SAMPLERATE,
+            RECORDER_CHANNELS, RECORDER_AUDIO_ENCODING);
+    AudioRecord recorder = null;
     private boolean isRecording = false;
-
-    int BufferElements2Rec = 1024; // want to play 2048 (2K) since 2 bytes we use only 1024
-    int BytesPerElement = 2; // 2 bytes in 16bit format
 
     public AudioNode(Context context, String nodeName, AudioManager audioManager) {
         this.context = context;
@@ -58,25 +63,23 @@ public class AudioNode extends AbstractNodeMain {
 
     @Override
     public void onStart(ConnectedNode connectedNode) {
-        audioPubliser = connectedNode.newPublisher(nodeName+"/audio",UInt16MultiArray._TYPE);
-        UInt16MultiArray audioMsg = audioPubliser.newMessage();
+        audioPubliser = connectedNode.newPublisher(nodeName+"/audio",UInt8MultiArray._TYPE);
+        //UInt16MultiArray audioMsg = audioPubliser.newMessage();
+        UInt8MultiArray audioMsg = audioPubliser.newMessage();
 
-        int bufferSize = AudioRecord.getMinBufferSize(RECORDER_SAMPLERATE,
-                RECORDER_CHANNELS, RECORDER_AUDIO_ENCODING);
+
+
 
         connectedNode.executeCancellableLoop(new CancellableLoop() {
-            short[] sData = new short[BufferElements2Rec];
-            byte[] bData;
-            int bufferResults;
-
+            short[] buffer = new short[minBufferSize];
+            byte[] byteBuffer = new byte[minBufferSize];
 
             private final ChannelBufferOutputStream stream = new ChannelBufferOutputStream(MessageBuffers.dynamicBuffer());
             @Override
             protected void setup() {
-
                 recorder = new AudioRecord(MediaRecorder.AudioSource.MIC,
                         RECORDER_SAMPLERATE, RECORDER_CHANNELS,
-                        RECORDER_AUDIO_ENCODING, BufferElements2Rec * BytesPerElement);
+                        RECORDER_AUDIO_ENCODING, minBufferSize*10);
 
                 recorder.startRecording();
                 isRecording = true;
@@ -84,24 +87,28 @@ public class AudioNode extends AbstractNodeMain {
 
             @Override
             protected void loop() throws InterruptedException {
-                bufferResults = recorder.read(sData,0,BufferElements2Rec);
-                updateAudio(sData);
+                minBufferSize = recorder.read(buffer, 0, buffer.length);
+
+                updateAudio(buffer);
+                Thread.sleep(1/RECORDER_SAMPLERATE);
             }
 
 
             @SuppressLint("RestrictedApi")
             public void updateAudio(short[] buffer) {
                 Preconditions.checkNotNull(buffer);
-                //bData = ShortToByte(buffer);
-                //stream.buffer().writeBytes(bData);
 
-                audioMsg.setData(sData);
-                //stream.buffer().clear();
+
+                byteBuffer = ShortToByte(buffer);
+                stream.buffer().writeBytes(byteBuffer);
+
+                audioMsg.setData(stream.buffer().copy());
+                stream.buffer().clear();
 
                 audioPubliser.publish(audioMsg);
+                System.out.println("Audio sent.");
+
             }
-
-
 
             byte [] ShortToByte(short [] input) {
                 int short_index, byte_index;
