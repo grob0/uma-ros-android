@@ -344,7 +344,7 @@ public class MainActivity extends AppCompatActivity {
             nodeMainExecutor.execute(cameraNode, nodeConfiguration);
         }
         if(enableAudio) {
-            AudioNode audioNode = new AudioNode(this,nodeName,mAudioManager);
+            AudioNode audioNode = new AudioNode(nodeName,mAudioManager);
             nodeMainExecutor.execute(audioNode,nodeConfiguration);
 
             NLPNode nlpNode = new NLPNode(nodeName,enableNlp);

@@ -33,12 +33,11 @@ import std_msgs.UInt8MultiArray;
 
 public class AudioNode extends AbstractNodeMain {
 
-    private Context context;
     private String nodeName;
     private AudioManager audioManager;
 
-    //private Publisher<UInt16MultiArray> audioPubliser;
-    private Publisher<UInt8MultiArray> audioPubliser;
+    private Publisher<UInt16MultiArray> audioPubliser16;
+    private Publisher<UInt8MultiArray> audioPubliser8;
 
 
     private static final int RECORDER_SAMPLERATE = 44100;
@@ -46,11 +45,10 @@ public class AudioNode extends AbstractNodeMain {
     private static final int RECORDER_AUDIO_ENCODING = AudioFormat.ENCODING_PCM_16BIT;
     int minBufferSize = AudioRecord.getMinBufferSize(RECORDER_SAMPLERATE,
             RECORDER_CHANNELS, RECORDER_AUDIO_ENCODING);
-    AudioRecord recorder = null;
+    AudioRecord recorder;
     private boolean isRecording = false;
 
-    public AudioNode(Context context, String nodeName, AudioManager audioManager) {
-        this.context = context;
+    public AudioNode(String nodeName, AudioManager audioManager) {
         this.nodeName = nodeName;
         this.audioManager = audioManager;
     }
@@ -63,9 +61,11 @@ public class AudioNode extends AbstractNodeMain {
 
     @Override
     public void onStart(ConnectedNode connectedNode) {
-        audioPubliser = connectedNode.newPublisher(nodeName+"/audio",UInt8MultiArray._TYPE);
-        //UInt16MultiArray audioMsg = audioPubliser.newMessage();
-        UInt8MultiArray audioMsg = audioPubliser.newMessage();
+        audioPubliser16 = connectedNode.newPublisher(nodeName+"/audio16",UInt16MultiArray._TYPE);
+        audioPubliser8 = connectedNode.newPublisher(nodeName+"/audio8",UInt8MultiArray._TYPE);
+
+        UInt16MultiArray audioMsg16 = audioPubliser16.newMessage();
+        UInt8MultiArray audioMsg8 = audioPubliser8.newMessage();
 
 
 
@@ -79,7 +79,7 @@ public class AudioNode extends AbstractNodeMain {
             protected void setup() {
                 recorder = new AudioRecord(MediaRecorder.AudioSource.MIC,
                         RECORDER_SAMPLERATE, RECORDER_CHANNELS,
-                        RECORDER_AUDIO_ENCODING, minBufferSize*10);
+                        RECORDER_AUDIO_ENCODING, minBufferSize*2);
 
                 recorder.startRecording();
                 isRecording = true;
@@ -89,24 +89,36 @@ public class AudioNode extends AbstractNodeMain {
             protected void loop() throws InterruptedException {
                 minBufferSize = recorder.read(buffer, 0, buffer.length);
 
-                updateAudio(buffer);
-                Thread.sleep(1/RECORDER_SAMPLERATE);
+                updateAudio8(buffer);
+                updateAudio16(buffer);
+                Thread.sleep((1/RECORDER_SAMPLERATE)*1000);
             }
 
 
             @SuppressLint("RestrictedApi")
-            public void updateAudio(short[] buffer) {
+            public void updateAudio8(short[] buffer) {
                 Preconditions.checkNotNull(buffer);
 
 
                 byteBuffer = ShortToByte(buffer);
                 stream.buffer().writeBytes(byteBuffer);
 
-                audioMsg.setData(stream.buffer().copy());
+                audioMsg8.setData(stream.buffer().copy());
                 stream.buffer().clear();
 
-                audioPubliser.publish(audioMsg);
-                System.out.println("Audio sent.");
+                audioPubliser8.publish(audioMsg8);
+                System.out.println("Audio 8 sent.");
+
+            }
+
+            @SuppressLint("RestrictedApi")
+            public void updateAudio16(short[] buffer) {
+                Preconditions.checkNotNull(buffer);
+
+                audioMsg16.setData(buffer);
+
+                audioPubliser16.publish(audioMsg16);
+                System.out.println("Audio 16 sent.");
 
             }
 
