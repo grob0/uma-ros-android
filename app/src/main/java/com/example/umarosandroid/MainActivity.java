@@ -106,25 +106,24 @@ public class MainActivity extends AppCompatActivity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         Intent intent = getIntent();
-        String masterUri = intent.getStringExtra(SetupActivity.MASTER_URI);
-        String masterPort = intent.getStringExtra(SetupActivity.MASTER_PORT);
+        String masterUri = intent.getStringExtra(CustomMasterChooser.MASTER_URI);
 
-        nodeName = intent.getStringExtra(SetupActivity.NODE_NAME);
+        nodeName = intent.getStringExtra(CustomMasterChooser.NODE_NAME);
 
-        enableCamera = intent.getBooleanExtra(SetupActivity.ENABLE_CAMERA,false);
-        enableAudio = intent.getBooleanExtra(SetupActivity.ENABLE_AUDIO,false);
-        enableGps= intent.getBooleanExtra(SetupActivity.ENABLE_GPS,false);
-        enableImu = intent.getBooleanExtra(SetupActivity.ENABLE_IMU,false);
-        enableNlp = intent.getBooleanExtra(SetupActivity.ENABLE_NLP,false);
+        enableCamera = intent.getBooleanExtra(CustomMasterChooser.ENABLE_CAMERA,false);
+        enableAudio = intent.getBooleanExtra(CustomMasterChooser.ENABLE_AUDIO,false);
+        enableGps= intent.getBooleanExtra(CustomMasterChooser.ENABLE_GPS,false);
+        enableImu = intent.getBooleanExtra(CustomMasterChooser.ENABLE_IMU,false);
+        enableNlp = intent.getBooleanExtra(CustomMasterChooser.ENABLE_NLP,false);
 
-        System.out.println("http://"+masterUri+":"+masterPort+"/");
+        System.out.println(masterUri);
         URI customUri = null;
-
         try {
-            customUri = new URI("http://"+masterUri+":"+masterPort+"/");
+            customUri = new URI(masterUri);
         } catch (URISyntaxException e) {
             e.printStackTrace();
         }
+
         //previewView = findViewById(R.id.previewView);
 
         nameView = (TextView) findViewById(R.id.nameText);

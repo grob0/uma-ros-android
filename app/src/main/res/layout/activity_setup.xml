@@ -54,40 +54,16 @@
                     android:text="IP address :"
                     android:textStyle="bold" />
 
-                <EditText
+                <AutoCompleteTextView
                     android:id="@+id/MasterUri"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_weight="2.5"
-                    android:ems="10"
-                    android:hint="Enter Master IP address" />
-            </LinearLayout>
+                    android:layout_weight="20"
+                    android:hint="@string/master_uri_hint"
+                    android:singleLine="true">
 
-            <LinearLayout
-                android:id="@+id/linear2"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_alignParentLeft="true"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/linear">
-
-                <TextView
-                    android:id="@+id/porttextview"
-                    android:layout_width="90dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="Port number : "
-                    android:textStyle="bold" />
-
-                <EditText
-                    android:id="@+id/MasterPort"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="2.5"
-                    android:ems="10"
-                    android:inputType="number"
-                    android:text="11311" />
+                    <requestFocus/>
+                </AutoCompleteTextView>
             </LinearLayout>
 
         </androidx.constraintlayout.widget.ConstraintLayout>
@@ -234,10 +210,36 @@
             android:layout_height="wrap_content"
             android:layout_centerHorizontal="true"
             android:text="Connect"
-            app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/sensorcont" />
+
+        <LinearLayout
+            android:id="@+id/connection_layout"
+            style="@style/padded"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:orientation="vertical"
+            app:layout_constraintTop_toBottomOf="@id/createorconnect"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            android:visibility="gone">
+
+
+            <ProgressBar
+                android:id="@+id/connection_spinner"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+
+            <TextView
+                android:id="@+id/connection_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/connection_text"
+                android:textSize="18sp" />
+
+        </LinearLayout>
     </androidx.constraintlayout.widget.ConstraintLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

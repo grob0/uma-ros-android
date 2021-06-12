@@ -34,7 +34,7 @@
             </intent-filter>
         </service>
 
-        <activity android:name=".SetupActivity">
+        <activity android:name=".CustomMasterChooser">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
