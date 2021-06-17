@@ -65,32 +65,6 @@ public class MainActivity extends AppCompatActivity {
     private ServiceConnection nodeMainExecutorServiceConnection;
     private NodeMainExecutorService nodeMainExecutorService;
 
-    // Camera requests
-    private static final String[] CAMERA_PERMISSION = new String[]{Manifest.permission.CAMERA};
-    private static final int CAMERA_REQUEST_CODE = 10;
-
-    // Coarse location requests
-    private static final String[] COARSE_LOCATION_PERMISSION = new String[]{Manifest.permission.ACCESS_COARSE_LOCATION};
-    private static final int COARSE_LOCATION_REQUEST_CODE = 10;
-
-    // Fine location requests
-    private static final String[] FINE_LOCATION_PERMISSION = new String[]{Manifest.permission.ACCESS_FINE_LOCATION};
-    private static final int FINE_LOCATION_REQUEST_CODE = 10;
-
-    // Audio requests
-    private static final String[] AUDIO_PERMISSION = new String[]{Manifest.permission.RECORD_AUDIO};
-    private static final int AUDIO_REQUEST_CODE = 10;
-
-    // Write requests
-    private static final String[] WRITE_PERMISSION = new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE};
-    private static final int WRITE_REQUEST_CODE = 10;
-
-    // Read requests
-    private static final String[] MANAGE_PERMISSION = new String[]{Manifest.permission.MANAGE_EXTERNAL_STORAGE};
-    private static final int MANAGE_REQUEST_CODE = 10;
-
-
-
     //private FusedLocationProviderClient fusedLocationClient;
     private LocationManager mLocationManager;
 
@@ -138,11 +112,8 @@ public class MainActivity extends AppCompatActivity {
 
         nodeMainExecutorServiceConnection = new NodeMainExecutorServiceConnection(customUri);
 
-        if(enableCamera) {
-            if(!hasCameraPermission()) {
-                requestCameraPermission();
-            }
 
+        if(enableCamera) {
             cameraProviderFuture = ProcessCameraProvider.getInstance(this);
             cameraView.setText(R.string.camera_on);
 
@@ -152,31 +123,13 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if(enableAudio) {
-
-            if(!hasAudioPermission()) {
-                requestAudioPermission();
-            }
-            if(!hasWritePermission()) {
-                requestWritePermission();
-            }
-            /*
-            if(!hasManagePermission()) {
-                requestManagePermission();
-            }
-            */
-            mAudioManager = (AudioManager)this.getSystemService(AUDIO_SERVICE);
             audioView.setText(R.string.audio_on);
-            String x = mAudioManager.getProperty(AudioManager.PROPERTY_SUPPORT_AUDIO_SOURCE_UNPROCESSED);
-
         }
         else {
             audioView.setText(R.string.audio_off);
         }
 
         if(enableGps) {
-            if(!hasFineLocationPermission()) {
-                requestFineLocationPermission();
-            }
             mLocationManager = (LocationManager)this.getSystemService(LOCATION_SERVICE);
             final boolean gpsEnabled = mLocationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
             if (!gpsEnabled) {
@@ -275,99 +228,8 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private boolean hasCameraPermission() {
-        return ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.CAMERA
-        ) == PackageManager.PERMISSION_GRANTED;
-    }
 
-    // Requests camera permission
-    private void requestCameraPermission() {
-        ActivityCompat.requestPermissions(
-                this,
-                CAMERA_PERMISSION,
-                CAMERA_REQUEST_CODE
-        );
-    }
 
-    private boolean hasCoarseLocationPermission() {
-        return ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-        )== PackageManager.PERMISSION_GRANTED;
-    }
-
-    private void requestCoarseLocationPermission() {
-        ActivityCompat.requestPermissions(
-                this,
-                COARSE_LOCATION_PERMISSION,
-                COARSE_LOCATION_REQUEST_CODE
-        );
-    }
-
-    private boolean hasFineLocationPermission() {
-        return ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_FINE_LOCATION
-        )== PackageManager.PERMISSION_GRANTED;
-    }
-
-    private void requestFineLocationPermission() {
-        ActivityCompat.requestPermissions(
-                this,
-                FINE_LOCATION_PERMISSION,
-                FINE_LOCATION_REQUEST_CODE
-        );
-    }
-
-    private boolean hasAudioPermission() {
-        return ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.RECORD_AUDIO
-        ) == PackageManager.PERMISSION_GRANTED;
-    }
-
-    // Requests audio permission
-    private void requestAudioPermission() {
-        ActivityCompat.requestPermissions(
-                this,
-                AUDIO_PERMISSION,
-                AUDIO_REQUEST_CODE
-        );
-    }
-
-    private boolean hasWritePermission() {
-        return ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE
-        ) == PackageManager.PERMISSION_GRANTED;
-    }
-
-    // Requests write permission
-    private void requestWritePermission() {
-        ActivityCompat.requestPermissions(
-                this,
-                WRITE_PERMISSION,
-                WRITE_REQUEST_CODE
-        );
-    }
-
-    private boolean hasManagePermission() {
-        return ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.MANAGE_EXTERNAL_STORAGE
-        ) == PackageManager.PERMISSION_GRANTED;
-    }
-
-    // Requests read permission
-    private void requestManagePermission() {
-        ActivityCompat.requestPermissions(
-                this,
-                MANAGE_PERMISSION,
-                MANAGE_REQUEST_CODE
-        );
-    }
 
     protected void init(NodeMainExecutor nodeMainExecutor) {
 

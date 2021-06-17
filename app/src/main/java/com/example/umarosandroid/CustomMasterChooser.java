@@ -16,11 +16,13 @@
 
 package com.example.umarosandroid;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextUtils;
@@ -39,6 +41,7 @@ import android.widget.LinearLayout;
 import android.widget.ListView;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 
 
 import org.ros.exception.RosRuntimeException;
@@ -149,6 +152,21 @@ public class CustomMasterChooser extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // The request code used in ActivityCompat.requestPermissions()
+        // and returned in the Activity's onRequestPermissionsResult()
+        int PERMISSION_ALL = 1;
+        String[] PERMISSIONS = {
+                Manifest.permission.CAMERA,
+                Manifest.permission.RECORD_AUDIO,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                Manifest.permission.ACCESS_FINE_LOCATION
+        };
+
+        if (!hasPermissions(this, PERMISSIONS)) {
+            ActivityCompat.requestPermissions(this, PERMISSIONS, PERMISSION_ALL);
+        }
+
         setContentView(R.layout.activity_setup);
         final Pattern uriPattern = RosURIPattern.URI;
 
@@ -193,26 +211,7 @@ public class CustomMasterChooser extends AppCompatActivity {
             public void afterTextChanged(Editable s) {
             }
         });
-/*
-        nodeNameEdit.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-                final String name = s.toString();
-                if(!TextUtils.isEmpty(name))  {
-                    nodeNameEdit.setError(null);
-                    nodeName_s = name;
-                }
-            }
 
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-            }
-
-            @Override
-            public void afterTextChanged(Editable s) {
-            }
-        });
-*/
         // Get the URI from preferences and display it. Since only primitive types
         // can be saved in preferences the URI is stored as a string.
         String uri =
@@ -339,6 +338,17 @@ public class CustomMasterChooser extends AppCompatActivity {
             }
         });
 
+    }
+
+    public static boolean hasPermissions(Context context, String... permissions) {
+        if (context != null && permissions != null) {
+            for (String permission : permissions) {
+                if (ActivityCompat.checkSelfPermission(context, permission) != PackageManager.PERMISSION_GRANTED) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     @Override
