@@ -228,9 +228,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-
-
-
     protected void init(NodeMainExecutor nodeMainExecutor) {
 
         //Network configuration with ROS master

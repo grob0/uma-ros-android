@@ -12,6 +12,7 @@ import androidx.core.util.Preconditions;
 
 import org.jboss.netty.buffer.ChannelBufferOutputStream;
 import org.ros.internal.message.MessageBuffers;
+import org.ros.message.Time;
 import org.ros.namespace.GraphName;
 import org.ros.node.AbstractNodeMain;
 import org.ros.node.ConnectedNode;
@@ -23,6 +24,9 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 
 import std_msgs.UInt8MultiArray;
 
@@ -38,6 +42,8 @@ public class AudioNode extends AbstractNodeMain {
     private static final String AUDIO_RECORDER_FILE_EXT_WAV = ".wav";
     private static final String AUDIO_RECORDER_FOLDER = "UMA_ROS_Android_Audios";
     private static final String AUDIO_RECORDER_TEMP_FILE = "record_temp.raw";
+    private static final String DEFAULT_FILE_PATTERN = "yyyy-MM-dd-HH-mm-ss";
+
     private static final int RECORDER_SAMPLERATE = 44100;
     private static final int RECORDER_CHANNELS = AudioFormat.CHANNEL_IN_STEREO;
     private static final int RECORDER_AUDIO_ENCODING = AudioFormat.ENCODING_PCM_16BIT;
@@ -84,7 +90,11 @@ public class AudioNode extends AbstractNodeMain {
             file.mkdirs();
         }
 
-        return (file.getAbsolutePath() + "/" + nodeName + "_" + System.currentTimeMillis() + AUDIO_RECORDER_FILE_EXT_WAV);
+        Date date = new Date(System.currentTimeMillis());
+        SimpleDateFormat format = new SimpleDateFormat(DEFAULT_FILE_PATTERN);
+        String fileName = format.format(date);
+
+        return (file.getAbsolutePath() + "/" + nodeName + "_" + fileName + AUDIO_RECORDER_FILE_EXT_WAV);
     }
 
     private String getTempFilename(){
