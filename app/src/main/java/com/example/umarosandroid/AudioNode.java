@@ -1,18 +1,16 @@
 package com.example.umarosandroid;
 
 import android.annotation.SuppressLint;
-import android.content.Context;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
+import android.os.Environment;
+
 
 import androidx.core.util.Preconditions;
 
-import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBufferOutputStream;
-import org.opencv.android.Utils;
-import org.ros.concurrent.CancellableLoop;
 import org.ros.internal.message.MessageBuffers;
 import org.ros.namespace.GraphName;
 import org.ros.node.AbstractNodeMain;
@@ -21,36 +19,36 @@ import org.ros.node.Node;
 import org.ros.node.topic.Publisher;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 
-import std_msgs.UInt16MultiArray;
-import std_msgs.UInt8;
 import std_msgs.UInt8MultiArray;
 
 public class AudioNode extends AbstractNodeMain {
 
     private String nodeName;
-    private AudioManager audioManager;
 
-    private Publisher<UInt16MultiArray> audioPubliser16;
-    private Publisher<UInt8MultiArray> audioPubliser8;
+    private Publisher<UInt8MultiArray> audioPublisher;
+    private UInt8MultiArray audioMsg;
+    private final ChannelBufferOutputStream stream = new ChannelBufferOutputStream(MessageBuffers.dynamicBuffer());
 
-
+    private static final int RECORDER_BPP = 16;
+    private static final String AUDIO_RECORDER_FILE_EXT_WAV = ".wav";
+    private static final String AUDIO_RECORDER_FOLDER = "UMA_ROS_Android_Audios";
+    private static final String AUDIO_RECORDER_TEMP_FILE = "record_temp.raw";
     private static final int RECORDER_SAMPLERATE = 44100;
-    private static final int RECORDER_CHANNELS = AudioFormat.CHANNEL_IN_MONO;
+    private static final int RECORDER_CHANNELS = AudioFormat.CHANNEL_IN_STEREO;
     private static final int RECORDER_AUDIO_ENCODING = AudioFormat.ENCODING_PCM_16BIT;
-    int minBufferSize = AudioRecord.getMinBufferSize(RECORDER_SAMPLERATE,
-            RECORDER_CHANNELS, RECORDER_AUDIO_ENCODING);
-    AudioRecord recorder;
+
+    private AudioRecord recorder = null;
+    private int bufferSize = 0;
+    private Thread recordingThread = null;
     private boolean isRecording = false;
 
-    public AudioNode(String nodeName, AudioManager audioManager) {
+    public AudioNode(String nodeName) {
         this.nodeName = nodeName;
-        this.audioManager = audioManager;
     }
 
     @Override
@@ -61,101 +59,231 @@ public class AudioNode extends AbstractNodeMain {
 
     @Override
     public void onStart(ConnectedNode connectedNode) {
-        audioPubliser16 = connectedNode.newPublisher(nodeName+"/audio16",UInt16MultiArray._TYPE);
-        audioPubliser8 = connectedNode.newPublisher(nodeName+"/audio8",UInt8MultiArray._TYPE);
+        bufferSize = AudioRecord.getMinBufferSize(RECORDER_SAMPLERATE,
+                RECORDER_CHANNELS,
+                AudioFormat.ENCODING_PCM_16BIT);
 
-        UInt16MultiArray audioMsg16 = audioPubliser16.newMessage();
-        UInt8MultiArray audioMsg8 = audioPubliser8.newMessage();
+        audioPublisher = connectedNode.newPublisher(nodeName+"/audio",UInt8MultiArray._TYPE);
+        audioMsg = audioPublisher.newMessage();
 
-
-
-
-        connectedNode.executeCancellableLoop(new CancellableLoop() {
-            short[] buffer = new short[minBufferSize];
-            byte[] byteBuffer = new byte[minBufferSize];
-
-            private final ChannelBufferOutputStream stream = new ChannelBufferOutputStream(MessageBuffers.dynamicBuffer());
-            @Override
-            protected void setup() {
-                recorder = new AudioRecord(MediaRecorder.AudioSource.MIC,
-                        RECORDER_SAMPLERATE, RECORDER_CHANNELS,
-                        RECORDER_AUDIO_ENCODING, minBufferSize*2);
-
-                recorder.startRecording();
-                isRecording = true;
-            }
-
-            @Override
-            protected void loop() throws InterruptedException {
-                minBufferSize = recorder.read(buffer, 0, buffer.length);
-
-                updateAudio8(buffer);
-                updateAudio16(buffer);
-                Thread.sleep((1/RECORDER_SAMPLERATE)*1000);
-            }
-
-
-            @SuppressLint("RestrictedApi")
-            public void updateAudio8(short[] buffer) {
-                Preconditions.checkNotNull(buffer);
-
-
-                byteBuffer = ShortToByte(buffer);
-                stream.buffer().writeBytes(byteBuffer);
-
-                audioMsg8.setData(stream.buffer().copy());
-                stream.buffer().clear();
-
-                audioPubliser8.publish(audioMsg8);
-                System.out.println("Audio 8 sent.");
-
-            }
-
-            @SuppressLint("RestrictedApi")
-            public void updateAudio16(short[] buffer) {
-                Preconditions.checkNotNull(buffer);
-
-                audioMsg16.setData(buffer);
-
-                audioPubliser16.publish(audioMsg16);
-                System.out.println("Audio 16 sent.");
-
-            }
-
-            byte [] ShortToByte(short [] input) {
-                int short_index, byte_index;
-                int iterations = input.length;
-
-                byte [] buffer = new byte[input.length * 2];
-
-                short_index = byte_index = 0;
-
-                for(/*NOP*/; short_index != iterations; /*NOP*/)
-                {
-                    buffer[byte_index]     = (byte) (input[short_index] & 0x00FF);
-                    buffer[byte_index + 1] = (byte) ((input[short_index] & 0xFF00) >> 8);
-
-                    ++short_index; byte_index += 2;
-                }
-
-                return buffer;
-            }
-        });
-
+        startRecording();
+        System.out.println("Start recoding");
     }
 
     @Override
     public void onShutdown(Node node) {
         stopRecording();
+        System.out.println("Stopped recording");
     }
 
-    private void stopRecording() {
-        // stops the recording activity
-        if (null != recorder) {
-            isRecording = false;
-            recorder.stop();
-            recorder.release();
-            recorder = null;
+    private String getFilename(){
+        String filepath = Environment.getExternalStorageDirectory().getPath();
+        File file = new File(filepath,AUDIO_RECORDER_FOLDER);
+
+        if(!file.exists()){
+            file.mkdirs();
         }
+
+        return (file.getAbsolutePath() + "/" + nodeName + "_" + System.currentTimeMillis() + AUDIO_RECORDER_FILE_EXT_WAV);
+    }
+
+    private String getTempFilename(){
+        String filepath = Environment.getExternalStorageDirectory().getPath();
+        File file = new File(filepath,AUDIO_RECORDER_FOLDER);
+
+        if(!file.exists()){
+            file.mkdirs();
+            System.out.println("Folder created");
+        }
+
+        File tempFile = new File(filepath,AUDIO_RECORDER_TEMP_FILE);
+
+        if(tempFile.exists())
+            tempFile.delete();
+        System.out.println("File created");
+        return (file.getAbsolutePath() + "/" + AUDIO_RECORDER_TEMP_FILE);
+    }
+
+    private void startRecording(){
+        recorder = new AudioRecord(MediaRecorder.AudioSource.MIC,
+                RECORDER_SAMPLERATE, RECORDER_CHANNELS,RECORDER_AUDIO_ENCODING, bufferSize);
+
+        int i = recorder.getState();
+        if(i==1)
+            recorder.startRecording();
+
+        isRecording = true;
+
+        recordingThread = new Thread(new Runnable() {
+
+            @Override
+            public void run() {
+                writeAudioDataToFile();
+            }
+        },"AudioRecorder Thread");
+
+        recordingThread.start();
+    }
+
+    private void writeAudioDataToFile(){
+        byte data[] = new byte[bufferSize];
+        String filename = getTempFilename();
+        System.out.println(filename);
+        FileOutputStream os = null;
+
+        try {
+            os = new FileOutputStream(filename);
+        } catch (FileNotFoundException e) {
+// TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
+        int read = 0;
+
+        if(null != os){
+            while(isRecording){
+                read = recorder.read(data, 0, bufferSize);
+
+                if(AudioRecord.ERROR_INVALID_OPERATION != read){
+                    try {
+                        os.write(data);
+                        publishAudioData(data);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+
+            try {
+                os.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private void stopRecording(){
+        if(null != recorder){
+            isRecording = false;
+
+            int i = recorder.getState();
+            if(i==1)
+                recorder.stop();
+            recorder.release();
+
+            recorder = null;
+            recordingThread = null;
+        }
+
+        copyWaveFile(getTempFilename(),getFilename());
+        deleteTempFile();
+    }
+
+    private void deleteTempFile() {
+        File file = new File(getTempFilename());
+
+        file.delete();
+    }
+
+    private void copyWaveFile(String inFilename,String outFilename){
+        FileInputStream in = null;
+        FileOutputStream out = null;
+        long totalAudioLen = 0;
+        long totalDataLen = totalAudioLen + 36;
+        long longSampleRate = RECORDER_SAMPLERATE;
+        int channels = 2;
+        long byteRate = RECORDER_BPP * RECORDER_SAMPLERATE * channels/8;
+
+        byte[] data = new byte[bufferSize];
+
+        try {
+            in = new FileInputStream(inFilename);
+            out = new FileOutputStream(outFilename);
+            totalAudioLen = in.getChannel().size();
+            totalDataLen = totalAudioLen + 36;
+
+            System.out.println("File size: " + totalDataLen);
+
+            WriteWaveFileHeader(out, totalAudioLen, totalDataLen,
+                    longSampleRate, channels, byteRate);
+
+            while(in.read(data) != -1){
+                out.write(data);
+            }
+
+            in.close();
+            out.close();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void WriteWaveFileHeader(
+            FileOutputStream out, long totalAudioLen,
+            long totalDataLen, long longSampleRate, int channels,
+            long byteRate) throws IOException {
+
+        byte[] header = new byte[44];
+
+        header[0] = 'R'; // RIFF/WAVE header
+        header[1] = 'I';
+        header[2] = 'F';
+        header[3] = 'F';
+        header[4] = (byte) (totalDataLen & 0xff);
+        header[5] = (byte) ((totalDataLen >> 8) & 0xff);
+        header[6] = (byte) ((totalDataLen >> 16) & 0xff);
+        header[7] = (byte) ((totalDataLen >> 24) & 0xff);
+        header[8] = 'W';
+        header[9] = 'A';
+        header[10] = 'V';
+        header[11] = 'E';
+        header[12] = 'f'; // 'fmt ' chunk
+        header[13] = 'm';
+        header[14] = 't';
+        header[15] = ' ';
+        header[16] = 16; // 4 bytes: size of 'fmt ' chunk
+        header[17] = 0;
+        header[18] = 0;
+        header[19] = 0;
+        header[20] = 1; // format = 1
+        header[21] = 0;
+        header[22] = (byte) channels;
+        header[23] = 0;
+        header[24] = (byte) (longSampleRate & 0xff);
+        header[25] = (byte) ((longSampleRate >> 8) & 0xff);
+        header[26] = (byte) ((longSampleRate >> 16) & 0xff);
+        header[27] = (byte) ((longSampleRate >> 24) & 0xff);
+        header[28] = (byte) (byteRate & 0xff);
+        header[29] = (byte) ((byteRate >> 8) & 0xff);
+        header[30] = (byte) ((byteRate >> 16) & 0xff);
+        header[31] = (byte) ((byteRate >> 24) & 0xff);
+        header[32] = (byte) (2 * 16 / 8); // block align
+        header[33] = 0;
+        header[34] = RECORDER_BPP; // bits per sample
+        header[35] = 0;
+        header[36] = 'd';
+        header[37] = 'a';
+        header[38] = 't';
+        header[39] = 'a';
+        header[40] = (byte) (totalAudioLen & 0xff);
+        header[41] = (byte) ((totalAudioLen >> 8) & 0xff);
+        header[42] = (byte) ((totalAudioLen >> 16) & 0xff);
+        header[43] = (byte) ((totalAudioLen >> 24) & 0xff);
+
+        out.write(header, 0, 44);
+    }
+
+    @SuppressLint("RestrictedApi")
+    void publishAudioData(byte[] data) {
+        Preconditions.checkNotNull(data);
+
+        stream.buffer().writeBytes(data);
+
+        audioMsg.setData(stream.buffer().copy());
+        stream.buffer().clear();
+
+        audioPublisher.publish(audioMsg);
     }
 }

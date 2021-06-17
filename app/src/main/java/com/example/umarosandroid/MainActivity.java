@@ -3,7 +3,6 @@ package com.example.umarosandroid;
 import android.Manifest;
 
 import android.annotation.SuppressLint;
-import android.app.Service;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -12,11 +11,9 @@ import android.content.pm.PackageManager;
 import android.hardware.SensorManager;
 import android.location.LocationManager;
 import android.media.AudioManager;
-import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.provider.MediaStore;
 import android.provider.Settings;
 import android.text.TextUtils;
 import android.view.WindowManager;
@@ -28,7 +25,6 @@ import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.camera.lifecycle.ProcessCameraProvider;
-import androidx.camera.view.PreviewView;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
@@ -40,7 +36,6 @@ import org.ros.android.NodeMainExecutorService;
 import org.ros.exception.RosRuntimeException;
 import org.ros.node.NodeConfiguration;
 import org.ros.node.NodeMainExecutor;
-import org.w3c.dom.Text;
 
 import java.net.NetworkInterface;
 import java.net.SocketException;
@@ -82,9 +77,19 @@ public class MainActivity extends AppCompatActivity {
     private static final String[] FINE_LOCATION_PERMISSION = new String[]{Manifest.permission.ACCESS_FINE_LOCATION};
     private static final int FINE_LOCATION_REQUEST_CODE = 10;
 
-    // Camera requests
+    // Audio requests
     private static final String[] AUDIO_PERMISSION = new String[]{Manifest.permission.RECORD_AUDIO};
     private static final int AUDIO_REQUEST_CODE = 10;
+
+    // Write requests
+    private static final String[] WRITE_PERMISSION = new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE};
+    private static final int WRITE_REQUEST_CODE = 10;
+
+    // Read requests
+    private static final String[] MANAGE_PERMISSION = new String[]{Manifest.permission.MANAGE_EXTERNAL_STORAGE};
+    private static final int MANAGE_REQUEST_CODE = 10;
+
+
 
     //private FusedLocationProviderClient fusedLocationClient;
     private LocationManager mLocationManager;
@@ -124,8 +129,6 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
         }
 
-        //previewView = findViewById(R.id.previewView);
-
         nameView = (TextView) findViewById(R.id.nameText);
         nameView.setText("Name: "+ nodeName);
         cameraView = (TextView) findViewById(R.id.cameraText);
@@ -153,7 +156,14 @@ public class MainActivity extends AppCompatActivity {
             if(!hasAudioPermission()) {
                 requestAudioPermission();
             }
-
+            if(!hasWritePermission()) {
+                requestWritePermission();
+            }
+            /*
+            if(!hasManagePermission()) {
+                requestManagePermission();
+            }
+            */
             mAudioManager = (AudioManager)this.getSystemService(AUDIO_SERVICE);
             audioView.setText(R.string.audio_on);
             String x = mAudioManager.getProperty(AudioManager.PROPERTY_SUPPORT_AUDIO_SOURCE_UNPROCESSED);
@@ -259,8 +269,6 @@ public class MainActivity extends AppCompatActivity {
                 // Run init() in a new thread as a convenience since it often requires network access.
                 new Thread(() -> init(nodeMainExecutorService)).start();
             } else {
-                Toast.makeText(MainActivity.this, "Hola init", Toast.LENGTH_LONG).show();
-
                 // Without a master URI configured, we are in an unusable state.
                 nodeMainExecutorService.forceShutdown();
             }
@@ -320,12 +328,44 @@ public class MainActivity extends AppCompatActivity {
         ) == PackageManager.PERMISSION_GRANTED;
     }
 
-    // Requests camera permission
+    // Requests audio permission
     private void requestAudioPermission() {
         ActivityCompat.requestPermissions(
                 this,
                 AUDIO_PERMISSION,
                 AUDIO_REQUEST_CODE
+        );
+    }
+
+    private boolean hasWritePermission() {
+        return ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
+        ) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    // Requests write permission
+    private void requestWritePermission() {
+        ActivityCompat.requestPermissions(
+                this,
+                WRITE_PERMISSION,
+                WRITE_REQUEST_CODE
+        );
+    }
+
+    private boolean hasManagePermission() {
+        return ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.MANAGE_EXTERNAL_STORAGE
+        ) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    // Requests read permission
+    private void requestManagePermission() {
+        ActivityCompat.requestPermissions(
+                this,
+                MANAGE_PERMISSION,
+                MANAGE_REQUEST_CODE
         );
     }
 
@@ -343,7 +383,7 @@ public class MainActivity extends AppCompatActivity {
             nodeMainExecutor.execute(cameraNode, nodeConfiguration);
         }
         if(enableAudio) {
-            AudioNode audioNode = new AudioNode(nodeName,mAudioManager);
+            AudioNode audioNode = new AudioNode(nodeName);
             nodeMainExecutor.execute(audioNode,nodeConfiguration);
 
             NLPNode nlpNode = new NLPNode(nodeName,enableNlp);
@@ -394,7 +434,6 @@ public class MainActivity extends AppCompatActivity {
                 );
 
             } else {
-                Toast.makeText(MainActivity.this, "Hola init", Toast.LENGTH_LONG).show();
                 init(nodeMainExecutorService);
             }
         }

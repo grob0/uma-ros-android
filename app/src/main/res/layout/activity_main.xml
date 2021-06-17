@@ -4,7 +4,8 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".MainActivity">
+    tools:context=".MainActivity"
+    android:background="@color/colorBackground">
 
     <!--androidx.camera.view.PreviewView
         android:id="@+id/previewView"
@@ -23,7 +24,8 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        android:textColor="@color/colorText"/>
 
     <TextView
         android:id="@+id/cameraText"
@@ -32,7 +34,8 @@
         android:text="Camera:"
         app:layout_constraintTop_toBottomOf="@id/nameText"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintStart_toStartOf="parent"
+        android:textColor="@color/colorText"/>
 
     <TextView
         android:id="@+id/audioText"
@@ -41,7 +44,8 @@
         android:text="Audio:"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/cameraText" />
+        app:layout_constraintTop_toBottomOf="@+id/cameraText"
+        android:textColor="@color/colorText"/>
 
 
     <TextView
@@ -51,7 +55,8 @@
         android:text="GPS:"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/audioText" />
+        app:layout_constraintTop_toBottomOf="@+id/audioText"
+        android:textColor="@color/colorText"/>
 
 
     <TextView
@@ -61,6 +66,7 @@
         android:text="IMU:"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/GPSText" />
+        app:layout_constraintTop_toBottomOf="@+id/GPSText"
+        android:textColor="@color/colorText"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

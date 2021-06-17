@@ -6,7 +6,8 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:orientation="vertical"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="@color/colorBackground">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="wrap_content"
@@ -34,7 +35,8 @@
                 android:textStyle="bold"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
+                app:layout_constraintTop_toTopOf="parent"
+                android:textColor="@color/colorText"/>
 
             <LinearLayout
                 android:id="@+id/linear"
@@ -52,7 +54,8 @@
                     android:layout_weight="1"
 
                     android:text="IP address :"
-                    android:textStyle="bold" />
+                    android:textStyle="bold"
+                    android:textColor="@color/colorText"/>
 
                 <AutoCompleteTextView
                     android:id="@+id/MasterUri"
@@ -60,7 +63,8 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="20"
                     android:hint="@string/master_uri_hint"
-                    android:singleLine="true">
+                    android:singleLine="true"
+                    android:textColor="@color/colorText">
 
                     <requestFocus/>
                 </AutoCompleteTextView>
@@ -86,7 +90,8 @@
                 android:textStyle="bold"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
+                app:layout_constraintTop_toTopOf="parent"
+                android:textColor="@color/colorText"/>
 
             <LinearLayout
                 android:id="@+id/linear3"
@@ -104,7 +109,8 @@
                     android:layout_weight="1"
 
                     android:text="Node name :"
-                    android:textStyle="bold" />
+                    android:textStyle="bold"
+                    android:textColor="@color/colorText"/>
 
                 <EditText
                     android:id="@+id/NodeName"
@@ -112,7 +118,9 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="2.5"
                     android:ems="10"
-                    android:hint="Enter node name" />
+                    android:hint="Enter node name"
+                    android:textColor="@color/colorText"
+                    android:textColorHint="@color/colorPrimaryLight"/>
             </LinearLayout>
 
 
@@ -134,7 +142,8 @@
                 android:layout_height="wrap_content"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent">
+                app:layout_constraintTop_toTopOf="parent"
+                android:textColor="@color/colorText">
 
                 <Switch
                     android:id="@+id/CameraSwitch"
@@ -143,7 +152,8 @@
                     android:text="Camera"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent"
-                    tools:ignore="UseSwitchCompatOrMaterialXml" />
+                    tools:ignore="UseSwitchCompatOrMaterialXml"
+                    android:textColor="@color/colorText"/>
 
                 <Switch
                     android:id="@+id/AudioSwitch"
@@ -153,7 +163,8 @@
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toEndOf="@+id/CameraSwitch"
                     app:layout_constraintTop_toTopOf="parent"
-                    tools:ignore="UseSwitchCompatOrMaterialXml" />
+                    tools:ignore="UseSwitchCompatOrMaterialXml"
+                    android:textColor="@color/colorText" />
             </LinearLayout>
 
             <LinearLayout
@@ -171,7 +182,8 @@
                     android:text="GPS"
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
-                    tools:ignore="UseSwitchCompatOrMaterialXml" />
+                    tools:ignore="UseSwitchCompatOrMaterialXml"
+                    android:textColor="@color/colorText"/>
 
                 <Switch
                     android:id="@+id/IMUSwitch"
@@ -182,7 +194,8 @@
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toEndOf="@+id/GPSSwitch"
                     app:layout_constraintTop_toBottomOf="@+id/AudioSwitch"
-                    tools:ignore="UseSwitchCompatOrMaterialXml" />
+                    tools:ignore="UseSwitchCompatOrMaterialXml"
+                    android:textColor="@color/colorText"/>
             </LinearLayout>
 
             <LinearLayout
@@ -201,9 +214,18 @@
                     android:text="NLP"
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
-                    tools:ignore="UseSwitchCompatOrMaterialXml" />
+                    tools:ignore="UseSwitchCompatOrMaterialXml"
+                    android:textColor="@color/colorText"/>
             </LinearLayout>
     </androidx.constraintlayout.widget.ConstraintLayout>
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:layout_constraintTop_toBottomOf="@id/sensorcont"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:id="@+id/buttoncont"
+            android:paddingBottom="50dp">
         <Button
             android:id="@+id/createorconnect"
             android:layout_width="wrap_content"
@@ -212,7 +234,7 @@
             android:text="Connect"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/sensorcont" />
+            app:layout_constraintTop_toTopOf="parent" />
 
         <LinearLayout
             android:id="@+id/connection_layout"
@@ -224,6 +246,7 @@
             app:layout_constraintTop_toBottomOf="@id/createorconnect"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
             android:visibility="gone">
 
 
@@ -237,9 +260,12 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/connection_text"
-                android:textSize="18sp" />
+                android:textSize="18sp"
+                android:textColor="@color/colorText"/>
 
         </LinearLayout>
     </androidx.constraintlayout.widget.ConstraintLayout>
 
+</androidx.constraintlayout.widget.ConstraintLayout>
+    
 </androidx.constraintlayout.widget.ConstraintLayout>

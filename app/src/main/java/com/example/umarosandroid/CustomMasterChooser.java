@@ -69,6 +69,7 @@ import java.util.regex.Pattern;
  * @author ethan.rublee@gmail.com (Ethan Rublee)
  * @author damonkohler@google.com (Damon Kohler)
  * @author munjaldesai@google.com (Munjal Desai)
+ * @edit germanruizmudarra@gmail.com (Germán Ruiz-Mudarra)
  */
 public class CustomMasterChooser extends AppCompatActivity {
 
@@ -329,7 +330,6 @@ public class CustomMasterChooser extends AppCompatActivity {
                             startActivity(mIntent);
                             setResult(RESULT_OK, mIntent);
 
-                            finish();
                         } else {
                             connectButton.setEnabled(true);
                             uriText.setEnabled(true);
