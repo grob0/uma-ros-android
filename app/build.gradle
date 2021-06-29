@@ -57,8 +57,7 @@ dependencies {
 
     implementation 'com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava'
 
-    // OpenCV
-    implementation 'com.quickbirdstudios:opencv:4.3.0'
+    implementation 'com.google.android.gms:play-services-location:18.0.0'
 
     implementation 'androidx.constraintlayout:constraintlayout:2.0.4'
     // To use constraint layout compose

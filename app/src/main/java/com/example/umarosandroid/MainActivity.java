@@ -28,6 +28,8 @@ import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import org.ros.address.InetAddressFactory;
@@ -65,7 +67,7 @@ public class MainActivity extends AppCompatActivity {
     private ServiceConnection nodeMainExecutorServiceConnection;
     private NodeMainExecutorService nodeMainExecutorService;
 
-    //private FusedLocationProviderClient fusedLocationClient;
+    private FusedLocationProviderClient fusedLocationClient;
     private LocationManager mLocationManager;
 
     // IMU and Camera instances and views
@@ -131,6 +133,7 @@ public class MainActivity extends AppCompatActivity {
 
         if(enableGps) {
             mLocationManager = (LocationManager)this.getSystemService(LOCATION_SERVICE);
+            fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
             final boolean gpsEnabled = mLocationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
             if (!gpsEnabled) {
                 // Build an alert dialog here that requests that the user enable
