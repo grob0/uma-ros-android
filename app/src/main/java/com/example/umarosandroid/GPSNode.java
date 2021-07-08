@@ -26,6 +26,7 @@ import org.ros.node.topic.Publisher;
 /**
  * @author chadrockey@gmail.com (Chad Rockey)
  * @author axelfurlan@gmail.com (Axel Furlan)
+ * @edit germanruizmudarra@gmail.com (Germán Ruiz-Mudarra)
  */
 public class GPSNode implements NodeMain {
     private final Context context;
