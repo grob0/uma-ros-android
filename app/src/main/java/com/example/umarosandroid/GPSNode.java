@@ -69,7 +69,7 @@ public class GPSNode implements NodeMain {
                 // for ActivityCompat#requestPermissions for more details.
                 return;
             }
-            this.locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 5, this.navSatListener);
+            this.locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, this.navSatListener);
             Looper.loop();
         }
 
